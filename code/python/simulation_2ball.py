@@ -8,16 +8,15 @@ import numpy as np
 ##############################
 
 n_simulations = 1000
-# n_simulations = 1
-trials = range(0,18) #note that clips 11 and 12 are swapped 
-# trials = [11]
-# noise = 1
+n_simulations = 1
+trials = range(0,18) # note that clips 11 and 12 are swapped
+trials = [0]
 noise = float(sys.argv[1]) #noise 
-# record_data = False
 record_data = True
+record_data = False
 experiment = '2ball'
-# animate = True
 animate = False
+animate = True
 
 ##############################
 # set up data structure 

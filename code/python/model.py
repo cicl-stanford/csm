@@ -14,8 +14,6 @@ class World():
 	"""
 	Sets up world and simulates a particular trial
 	- note: y-coordinates are flipped compared to javascript or flash implementation
-	- run python window in low resolution mode: /usr/local/Cellar/python/3.7.2_2/Frameworks/Python.framework/Versions/3.7/Resources/Python.app
-	- counterfactual tests could be made more efficient by only running the actual situation once
 	"""
 
 	def __init__(self):
@@ -166,26 +164,23 @@ class World():
 		return body, shape
 
 	def add_teleport_exit(self, position, name, status, space):
-		# take out of physics later ... 
 		body = pymunk.Body(body_type = pymunk.Body.STATIC)
 		body.position = position
 		body.name = name 
-		# body.size = (40,40)
 		body.angle = 0
 		body.status = status
 		shape = pymunk.Circle(body, 20)
 		shape.sensor = True
-		# space.add(body, shape)
 		return body, shape
 
 	def remove(self,ball,step,animate):
 		if self.step == step:
-			self.space.remove(self.shapes[ball]) #remove body from space 
-			self.space.remove(self.bodies[ball]) #remove body from space 
-			del self.bodies[ball] #remove body 
-			del self.shapes[ball] #remove shape
+			self.space.remove(self.shapes[ball])  
+			self.space.remove(self.bodies[ball])  
+			del self.bodies[ball] 
+			del self.shapes[ball] 
 			if animate: 		
-				del self.sprites[ball] #remove sprite 
+				del self.sprites[ball] 
 
 	def perturb(self,ball,step,magnitude = 0):
 		if self.step == step:
@@ -217,7 +212,7 @@ class World():
 			pygame.display.quit()
 			return True
 
-	def simulate(self, experiment = '3ball', animate=True, trial=0, noise = 0, save=False, info=[]):
+	def simulate(self, experiment = '3ball', animate=True, trial=0, noise=0, save=False, info=[]):
 		# Initialization 
 		self.trial = trial
 		self.pymunk_setup(experiment)
@@ -246,7 +241,7 @@ class World():
 				sprite = pygame.image.load('figures/' + name + '.png')
 				self.sprites[body] = sprite
 
-		# Run the simulation forever, until exit
+		# Run the simulation until exit
 		while not done:
 			if animate:
 				# Lets you exit the animation loop by clicking escape on animation
@@ -314,30 +309,16 @@ class World():
 		return np.sqrt(-2*np.log(u)) * np.cos(2 * np.pi * v)
 
 	##############################
-	# define counterfactual operations (local noise)
+	# define counterfactual operations 
 	##############################
-	# A procedure to determine which balls need added noise at what time
+	
 	def noise_addition(self, collisions, in_chain, start_time):
-		# Base case. When the list is empty return the empty list
+		"""A procedure to determine which balls need added noise at what time"""
 		if collisions == []:
 			return []
 		else:
-			# Otherwise grab the first collision. Diff is all balls in the collision
-			# that are not currently in the causal chain
 			hd = collisions[0]
 			diff = hd['balls'] - in_chain
-
-			# If both balls are not in the causal chain, then the collision is not connected
-			# to the causal chain. Because the collisions are sorted by time, we know it can be ignored
-
-			# If both balls are already in the causal chain, then they already should have noise applied
-			# (or have been removed). We don't need to add noise.
-
-			# If only one ball is not in the causal chain, then this collision makes that ball a part
-			# of the causal chain. Check to make sure it did not occur simultaneously with the previous
-			# collision (a counterexample). If it did not then we add that ball and the timestep of the
-			# collision to the output. We also add the ball to the set of in_chain balls and update the
-			# timestep
 			if len(diff) == 1 and hd['step'] > start_time:
 				b2 = diff.pop()
 				new_set = in_chain | {b2}
@@ -345,15 +326,13 @@ class World():
 			else:
 				return self.noise_addition(collisions[1:], in_chain, start_time)
 
-	# A procedure to test whether the candidate cause was a difference maker
+	
 	def difference_cause(self, w, experiment, noise, trial, cause, alternatives, df, n_simulations, animate, test_noise=False):
+		"""A procedure to test whether the candidate cause was a difference maker"""
 		# run actual world 
 		events = w.simulate(experiment = experiment, trial = trial, animate=animate)	
 
-		# Determine all the objects that need noise addition. Filter out the target
-		# because adding noise to the target will automatically change its fine outcome
-		# in the cf. This is okay, because if the target was a part of the direct causal
-		# chain, it will still be affected by the removal and thus labeled a dm
+		# figure out when to add noise
 		noise_adds = self.noise_addition(events['collisions'], {cause}, -1)
 		noise_adds = [x for x in noise_adds if x[0] != self.target_ball]
 
@@ -367,7 +346,7 @@ class World():
 			'step': 0
 		}]
 
-		# add noise + transitive noise if appropriate
+		# add noise
 		for item in noise_adds:
 			info.append({
 					'action': 'noise',
@@ -375,7 +354,7 @@ class World():
 					'step': item[1]
 				})
 
-		# Simulate n outcomes, saving the sim outcomes each time. 
+		# simulate n outcomes, saving the sim outcomes each time. 
 		outcomes = []
 		for x in range(0, n_simulations):
 			events = w.simulate(experiment = experiment, trial = trial, animate = animate, noise = noise, info = info)
@@ -387,11 +366,12 @@ class World():
 		else:
 			return sum(outcomes)/float(n_simulations), {'info': info}
 
-	# A procedure to measure the degree to which a candidate cause is a whether cause
 	def whether_cause(self, experiment, noise, w, trial, cause, df, n_simulations, animate, test_noise = False):
+		"""A procedure to measure the degree to which a candidate cause is a whether cause"""
+		
 		# run actual world 
-		# events = w.simulate(experiment = experiment, trial = trial, animate=animate)	
-		events = w.simulate(experiment = experiment, trial = trial, animate=False)	
+		events = w.simulate(experiment = experiment, trial = trial, animate=animate)	
+		
 		# get the outcome and determine which objects need noise added post removal
 		outcome_actual = events['outcome']
 		noise_add = self.noise_addition(events['collisions'], {cause}, -1)
@@ -422,9 +402,9 @@ class World():
 		else:
 			return sum(outcomes)/float(n_simulations), {'info': info}
 	
-	# A procedure to determine whether the candidate cause is a how cause
 	def how_cause(self, w, experiment, noise, trial, cause, df, animate):
-		# same as the global version
+		"""A procedure to determine whether the candidate cause is a how cause"""
+		
 		# run actual world 
 		events = w.simulate(experiment = experiment, trial = trial, animate=animate)	
 		outcome_actual = events['outcome_fine']
@@ -444,18 +424,18 @@ class World():
 		
 		return (outcome_counterfactual != outcome_actual)
 
-	# A procedure to measure the degree to which the candidate is a sufficient cause
 	def sufficient_cause(self, w, experiment, noise, trial, cause, alternatives, target, df, n_simulations, animate, test_noise=False):
+		"""A procedure to measure the degree to which the candidate is a sufficient cause"""
+
 		# run actual world 
 		events = w.simulate(experiment = experiment, trial = trial, animate = animate)
 		outcome_actual = events['outcome']
-		# For this version of the model there will be exactly one alternative
-		# Could be better generalized for other cases
+		
+		# figure out when to add noise to alternative cause
 		alternative = alternatives[0]
 		noise_add = self.noise_addition(events['collisions'], {alternative}, -1)
 
 		# manipulations
-		# For first cf, remove alternative cause and add noise to anything it collided with
 		info = [{
 			'action': 'remove',
 			'ball': alternative,
@@ -469,7 +449,7 @@ class World():
 					'step': item[1]
 				})
 
-		# For the contingency manipulations, remove the alternative and the cause. 
+		# for the contingency manipulations, remove the alternative and the cause. 
 		info_cont = [
 			{
 				'action': 'remove',
@@ -491,8 +471,6 @@ class World():
 		if len(noise_add_cont) > 0:
 			tar_noise = noise_add_cont[0]
 			info_cont.append({'action': 'noise', 'ball': tar_noise[0], 'step': tar_noise[1]})
-
-		
 		outcomes = []
 		for x in range(0, n_simulations):
 
@@ -515,48 +493,48 @@ class World():
 		else:
 			return sum(outcomes)/float(n_simulations), {'info': info, 'info_cont': info_cont}
 
-	# A procedure to measure the extent to which the candidate is a robust cause
 	def robust_cause(self, w, experiment, noise, perturb, trial, cause, alternatives, target, df, n_simulations, animate, test_noise=False):
-			# run actual world 
-			events = w.simulate(experiment = experiment, trial = trial, animate=animate)
-			outcome_actual = events['outcome']
-			noise_add = self.noise_addition(events['collisions'], {cause}, -1)	
+		"""A procedure to measure the extent to which the candidate is a robust cause"""
+		# run actual world 
+		events = w.simulate(experiment = experiment, trial = trial, animate=animate)
+		outcome_actual = events['outcome']
+		noise_add = self.noise_addition(events['collisions'], {cause}, -1)	
 
-			# perturb alternatives
-			info = []
-			for alternative in alternatives: 
-				info.append({
-					'action': 'perturb',
-					'ball': alternative,
-					'step': 0,
-					'magnitude': perturb
+		# perturb alternatives
+		info = []
+		for alternative in alternatives: 
+			info.append({
+				'action': 'perturb',
+				'ball': alternative,
+				'step': 0,
+				'magnitude': perturb
+			})
+
+		# Keep the perturbations and remove the cause. Add noise to anything downstream
+		# of the cause in the collision chain
+		info_cont = info + [{'action': 'remove', 'ball': cause, 'step': 0}]
+		for item in noise_add:
+			info_cont.append({
+					'action': 'noise',
+					'ball': item[0],
+					'step': item[1]
 				})
 
-			# Keep the perturbations and remove the cause. Add noise to anything downstream
-			# of the cause in the collision chain
-			info_cont = info + [{'action': 'remove', 'ball': cause, 'step': 0}]
-			for item in noise_add:
-				info_cont.append({
-						'action': 'noise',
-						'ball': item[0],
-						'step': item[1]
-					})
-
-			# Simulate the world with and without the candidate cause
-			# Every situation where the outcome with the candidate matches the actual world and the outcome
-			# without the candidate differs from the actual is a point in favor of the candidates robustness
-			outcomes = []
-			for x in range(0, n_simulations):
-				events = w.simulate(experiment = experiment, trial = trial, animate = animate, noise = noise, info = info)
-				outcome_counterfactual = events['outcome']
-				
-				events = w.simulate(experiment = experiment, trial = trial, animate = animate, noise = noise, info = info_cont)
-				outcome_counterfactual_contingency = events['outcome']
-				 
-				outcomes.append((outcome_actual == outcome_counterfactual) and (outcome_counterfactual != outcome_counterfactual_contingency))
+		# Simulate the world with and without the candidate cause
+		# Every situation where the outcome with the candidate matches the actual world and the outcome
+		# without the candidate differs from the actual is a point in favor of the candidates robustness
+		outcomes = []
+		for x in range(0, n_simulations):
+			events = w.simulate(experiment = experiment, trial = trial, animate = animate, noise = noise, info = info)
+			outcome_counterfactual = events['outcome']
 			
-			if not test_noise:
-				return sum(outcomes)/float(n_simulations)
-			else:
-				return sum(outcomes)/float(n_simulations), {'info_cont': info_cont}
+			events = w.simulate(experiment = experiment, trial = trial, animate = animate, noise = noise, info = info_cont)
+			outcome_counterfactual_contingency = events['outcome']
+			 
+			outcomes.append((outcome_actual == outcome_counterfactual) and (outcome_counterfactual != outcome_counterfactual_contingency))
+		
+		if not test_noise:
+			return sum(outcomes)/float(n_simulations)
+		else:
+			return sum(outcomes)/float(n_simulations), {'info_cont': info_cont}
 

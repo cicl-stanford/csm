@@ -7,20 +7,12 @@ import numpy as np
 # parameters
 ##############################
 
-# n_simulations = 100
 n_simulations = 1000
-# n_simulations = 1
-# trials = range(0,18)
 trials = range(0,32)
-# trials = [2]
-# trials = [22]
 noise = float(sys.argv[1]) #noise 
-# noise = 0.9
 perturb_robust = 10
-# record_data = False
 record_data = True
 experiment = '3ball'
-# animate = True
 animate = False
 
 ##############################

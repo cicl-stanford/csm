@@ -6,6 +6,7 @@ output:
   bookdown::html_document2:
     toc: true
     toc_depth: 4
+    toc_float: true
     theme: cosmo
     highlight: tango
 ---
@@ -703,7 +704,7 @@ df.exp2.causal.model = df.exp2.combined.long %>%
             by = "clip") %>% 
   select(-c(correlation, noise)) %>% 
   rename(simulation = prediction) %>% 
-  mutate_at(vars(simulation, causal_first, counterfactual_first, combined), list(~ ifelse(outcome_actual == 1, 100 - ., .)))
+  mutate_at(.vars = vars(simulation, causal_first, counterfactual_first, combined), .funs = list(~ ifelse(outcome_actual == 1, 100 - ., .)))
 
 ```
 
@@ -1314,9 +1315,7 @@ func_angle = function(x, y) {
   as.numeric(theta)
 }
 
-# double check these functions:
-# rotation: https://stackoverflow.com/questions/1897704/angle-between-two-vectors-in-r
-# angle between two points: https://stackoverflow.com/questions/2676719/calculating-the-angle-between-the-line-defined-by-two-points
+# impact on ball E 
 tmp.impactE = df.features.collisions %>%
   rowwise() %>%
   filter(
@@ -1339,13 +1338,14 @@ tmp.impactE = df.features.collisions %>%
   rename(ball = object) %>%
   mutate(ball = factor(ball, levels = c("ballA", "ballB"), labels = c("A", "B"))) %>%
   left_join(expand.grid(clip = 1:32, ball = c("A", "B")), .) %>%
-  mutate_at(vars(speed.diff, direction.diff), funs(ifelse(is.na(.), 0, .))) %>%
+  mutate_at(.vars = vars(speed.diff, direction.diff), .funs = ~ ifelse(is.na(.), 0, .)) %>%
   arrange(clip, ball) %>%
   rename(
     E.speed.diff = speed.diff,
     E.direction.diff = direction.diff
   )
 
+# total impact 
 tmp.impactTotal = df.features.collisions %>%
   rowwise() %>%
   filter(str_detect(object, "ballA|ballB")) %>%
@@ -1365,13 +1365,14 @@ tmp.impactTotal = df.features.collisions %>%
   rename(ball = object) %>%
   mutate(ball = factor(ball, levels = c("ballA", "ballB"), labels = c("A", "B"))) %>%
   left_join(expand.grid(clip = 1:32, ball = c("A", "B")), .) %>%
-  mutate_at(vars(speed.diff, direction.diff), funs(ifelse(is.na(.), 0, .))) %>%
+  mutate_at(.vars = vars(speed.diff, direction.diff), .funs = ~ ifelse(is.na(.), 0, .)) %>%
   arrange(clip, ball) %>%
   rename(
     total.speed.diff = speed.diff,
     total.direction.diff = direction.diff
   )
 
+# transfer of force 
 tmp.transfer = df.features.collisions %>%
   filter(
     str_detect(ball, "ballA|ballB"),
@@ -1727,135 +1728,10 @@ save(list = c("df.exp3.causal.individual_fit"),
      file = "cache/exp3_causal_individual_fit.RData")
 ```
 
-#### Individual participant regressions (scaled)
-
-```{r, eval=F}
-df.fit = df.exp3.causal.long %>% 
-  group_by(participant) %>% 
-  mutate(rating = scale(rating)[,]) %>% 
-  ungroup() %>% 
-  left_join(df.exp3.model.causal %>% 
-              mutate_at(.vars = vars(difference:whether),
-                        .f = ~ scale(.)[,]),
-            by = c("clip", "ball"))
-
-# priors 
-priors = c(set_prior("normal(0,10)", class = "b", lb = 0))
-
-# initial model fits (used for compilation)
-fit.brm_exp3_causal_individual_baseline = brm(formula = rating ~ 1,
-                                              data = df.fit %>% 
-                                                filter(participant == 1),
-                                              save_all_pars = T,
-                                              cores = 2,
-                                              seed = 1,
-                                              file = str_c("cache/brm_exp3_causal_individual_baseline_scaled"))
-
-fit.brm_exp3_causal_individual_w = brm(formula = rating ~ 1 + whether,
-                                       data = df.fit %>% 
-                                         filter(participant == 1),
-                                       prior = priors,
-                                       save_all_pars = T,
-                                       cores = 2,
-                                       seed = 1,
-                                       file = str_c("cache/brm_exp3_causal_individual_w_scaled"))
-
-fit.brm_exp3_causal_individual_wh = brm(formula = rating ~ 1 + whether + how,
-                                        data = df.fit %>% 
-                                          filter(participant == 1),
-                                        prior = priors,
-                                        save_all_pars = T,
-                                        cores = 2,
-                                        seed = 1,
-                                        file = str_c("cache/brm_exp3_causal_individual_wh_scaled"))
-
-fit.brm_exp3_causal_individual_whs = brm(formula = rating ~ 1 + whether + how + sufficient,
-                                         data = df.fit %>% 
-                                           filter(participant == 1),
-                                         prior = priors,
-                                         save_all_pars = T,
-                                         cores = 2,
-                                         seed = 1,
-                                         file = str_c("cache/brm_exp3_causal_individual_whs_scaled"))
-
-# update model fits for different participants
-df.exp3.causal.individual_fit = df.fit %>%
-  group_by(participant) %>%
-  nest() %>%
-  ungroup() %>% 
-  # fit model for each participant
-  mutate(fit_baseline = map(.x = data,
-                            .f = ~ update(fit.brm_exp3_causal_individual_baseline,
-                                          newdata = .x)),
-         fit_w = map(.x = data,
-                     .f = ~ update(fit.brm_exp3_causal_individual_w,
-                                   newdata = .x)),
-         fit_wh = map(.x = data,
-                      .f = ~ update(fit.brm_exp3_causal_individual_wh,
-                                    newdata = .x)),
-         fit_whs = map(.x = data,
-                       .f = ~ update(fit.brm_exp3_causal_individual_whs,
-                                     newdata = .x))) %>% 
-  mutate(fit_baseline = map(.x = fit_baseline,
-                            ~ add_criterion(.x, criterion = c("loo", "waic"))),
-         fit_w = map(.x = fit_w,
-                     ~ add_criterion(.x, criterion = c("loo", "waic"))),
-         fit_wh = map(.x = fit_wh,
-                      ~ add_criterion(.x, criterion = c("loo", "waic"))),
-         fit_whs = map(.x = fit_whs,
-                       ~ add_criterion(.x, criterion = c("loo", "waic"))),
-         r_w = map2_dbl(.x = data,
-                        .y = fit_w,
-                        .f = ~ cor(.x$rating, .y %>% 
-                                     fitted() %>% 
-                                     .[, 1])),
-         r_wh = map2_dbl(.x = data,
-                         .y = fit_wh,
-                         .f = ~ cor(.x$rating, .y %>% 
-                                      fitted() %>% 
-                                      .[, 1])),
-         r_whs = map2_dbl(.x = data,
-                          .y = fit_whs,
-                          .f = ~ cor(.x$rating, .y %>% 
-                                       fitted() %>% 
-                                       .[, 1])),
-         rmse_w = map2_dbl(.x = data,
-                        .y = fit_w,
-                        .f = ~ rmse(.x$rating, .y %>% 
-                                     fitted() %>% 
-                                     .[, 1])),
-         rmse_wh = map2_dbl(.x = data,
-                         .y = fit_wh,
-                         .f = ~ rmse(.x$rating, .y %>% 
-                                      fitted() %>% 
-                                      .[, 1])),
-         rmse_whs = map2_dbl(.x = data,
-                          .y = fit_whs,
-                          .f = ~ rmse(.x$rating, .y %>% 
-                                       fitted() %>% 
-                                       .[, 1])),
-         model_comparison = pmap(.l = list(baseline = fit_baseline,
-                                           w = fit_w,
-                                           wh = fit_wh,
-                                           whs = fit_whs),
-                                 .f = ~ loo_compare(..1, ..2, ..3, ..4)),
-         best_model = map_chr(.x = model_comparison,
-                              .f = ~ rownames(.) %>% .[1]),
-         best_model = factor(best_model,
-                             levels = c("..1", "..2", "..3", "..4"),
-                             labels = c("baseline", "w", "wh", "whs")))
-
-save(list = c("df.exp3.causal.individual_fit"),
-     file = "cache/exp3_causal_individual_fit_scaled.RData")
-```
-
 #### Load individual participant regressions
 
 ```{r}
 load("cache/exp3_causal_individual_fit.RData")
-# load("cache/exp3_causal_individual_fit_scaled.RData")
-
-# df.exp3.causal.individual_fit = df.exp3_causal_model_individual_fit
 
 # count how many participants are best fit by the different models
 df.exp3.causal.individual_fit %>% 
@@ -1949,7 +1825,7 @@ df.plot = df.exp3.causal.long %>%
             by = c("clip", "ball")) %>%
   ungroup() %>%
   gather("index", "value", c(mean, w, wh, whs)) %>%
-  mutate_at(.vars = vars(low, high), .f = ~ ifelse(index == "mean", ., NA)) %>%
+  mutate_at(.vars = vars(low, high), .funs = ~ ifelse(index == "mean", ., NA)) %>%
   mutate(index = factor(index, levels = c("mean", "w", "wh", "whs")),
          clip = factor(clip, levels = c(7, 23, 3, 15, 16),
                        labels = c("causal chain", "double prevention", "joint causation",
@@ -2126,7 +2002,7 @@ df.plot = df.exp3.causal.individual_fit %>%
   mutate(term = str_remove(term, "b_")) %>% 
   select(participant, term, estimate) %>% 
   spread(term, estimate) %>% 
-  mutate_at(vars(how:whether), .f = list(norm = ~ . / (how + whether + sufficient))) %>% 
+  mutate_at(vars(how:whether), .funs = list(norm = ~ . / (how + whether + sufficient))) %>% 
   mutate(color = 0,
          color = ifelse(how_norm == max(how_norm), 1, color),
          color = ifelse(whether_norm == max(whether_norm), 2, color),
@@ -2378,7 +2254,7 @@ fit.brm_exp3_causal_w %>%
 ```{r}
 df.exp3.causal.individual_fit %>% 
   select_if(~ (is.numeric(.) | is.factor(.))) %>% 
-  mutate_at(vars(contains("_w")), ~ round(., 2)) %>% 
+  mutate_at(.vars = vars(contains("_w")), .funs = ~ round(., 2)) %>% 
   select(participant, everything(), best_model) %>% 
   xtable() %>% 
   print(include.rownames = F,
@@ -2391,10 +2267,10 @@ df.exp3.causal.individual_fit %>%
 df.table = df.exp3.model.causal %>%
   left_join(df.exp3.causal.regression) %>% 
   filter(clip %in% c(7, 23, 16, 3, 15)) %>%
-  mutate_at(vars(difference, robust, sufficient, whether, heuristic), funs(round(., 2))) %>%
+  mutate_at(.vars = vars(difference, robust, sufficient, whether, heuristic), .funs = ~ round(., 2)) %>%
   select(clip, ball, difference, whether, how, sufficient, robust) %>%
   mutate(clip = factor(clip, levels = c(7, 23, 16, 3, 15))) %>%
-  mutate_at(.vars = vars(difference, whether, how, sufficient, robust), .f = ~ ifelse(. < 0.5, paste0("xmark (", ., ")"), paste0("cmark (", ., ")"))) %>%
+  mutate_at(.vars = vars(difference, whether, how, sufficient, robust), .funs = ~ ifelse(. < 0.5, paste0("xmark (", ., ")"), paste0("cmark (", ., ")"))) %>%
   arrange(clip)
 
 xtable(df.table) %>%
@@ -2411,8 +2287,8 @@ df.table = df.exp3.causal.regression %>%
               select(-clipindex),
             by = c("clip")) %>% 
   mutate_at(.vars = vars(difference, whether, how, sufficient, robust),
-            .f = ~ . * 100) %>% 
-  mutate_at(.vars = vars(-ball), .f = ~ round(., 0)) %>%
+            .funs = ~ . * 100) %>% 
+  mutate_at(.vars = vars(-ball), .funs = ~ round(., 0)) %>%
   select(clip, ball, contains("outcome"), difference, whether, how, sufficient, robust, w, wh, whs, heuristic, rating = rating_mean)
 
 xtable(df.table, digits = 0) %>%
@@ -2435,7 +2311,11 @@ fit.brm_exp3_causal_heuristic %>%
         booktabs = T)
 ```
 
+# Session info 
 
+```{r}
+sessionInfo()
+```
 
 
 
