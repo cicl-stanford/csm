@@ -1,0 +1,1062 @@
+[
+  {
+    "trial": 1,
+    "balls": [
+      {
+        "name": "B",
+        "position": [
+          830,
+          290
+        ],
+        "velocity": [
+          -0.9,
+          0
+        ]
+      },
+      {
+        "name": "A",
+        "position": [
+          830,
+          540
+        ],
+        "velocity": [
+          -0.9,
+          -0.5
+        ]
+      }],
+    "objects":[
+      {
+        "name": "brick",
+        "position": [
+          300,
+          310
+        ],
+        "rotation": 0
+      },
+      {
+        "name": "teleport_entrance",
+        "position": [
+          -99,
+          -99
+        ],
+        "rotation": 0,
+        "status": "off"
+      },
+      {
+        "name": "teleport_exit",
+        "position": [
+          -99,
+          -99
+        ],
+        "status": "off"
+      }
+    ]
+  },
+  {
+    "trial": 2,
+    "balls": [
+      {
+        "name": "B",
+        "position": [
+          830,
+          50
+        ],
+        "velocity": [
+          -1,
+          0.55
+        ]
+      },
+      {
+        "name": "A",
+        "position": [
+          850,
+          550
+        ],
+        "velocity": [
+          -1,
+          -0.6
+        ]
+      }],
+    "objects":[
+      {
+        "name": "brick",
+        "position": [
+          -99,
+          -99
+        ],
+        "rotation": 0
+      },
+      {
+        "name": "teleport_entrance",
+        "position": [
+          220,
+          410
+        ],
+        "rotation": 131,
+        "status": "off"
+      },
+      {
+        "name": "teleport_exit",
+        "position": [
+          50,
+          250
+        ],
+        "status": "off"
+      }
+    ]
+  },
+  {
+    "trial": 3,
+    "balls": [
+      {
+        "name": "B",
+        "position": [
+          830,
+          50
+        ],
+        "velocity": [
+          -1,
+          0.4
+        ]
+      },
+      {
+        "name": "A",
+        "position": [
+          850,
+          550
+        ],
+        "velocity": [
+          -1,
+          -0.65
+        ]
+      }],
+    "objects":[
+      {
+        "name": "brick",
+        "position": [
+          -99,
+          -99
+        ],
+        "rotation": 0
+      },
+      {
+        "name": "teleport_entrance",
+        "position": [
+          200,
+          150
+        ],
+        "rotation": 45,
+        "status": "off"
+      },
+      {
+        "name": "teleport_exit",
+        "position": [
+          70,
+          350
+        ],
+        "status": "off"
+      }
+    ]
+  },
+  {
+    "trial": 4,
+    "balls": [
+      {
+        "name": "B",
+        "position": [
+          830,
+          50
+        ],
+        "velocity": [
+          -1,
+          0.42
+        ]
+      },
+      {
+        "name": "A",
+        "position": [
+          850,
+          550
+        ],
+        "velocity": [
+          -1,
+          -0.65
+        ]
+      }],
+    "objects":[
+      {
+        "name": "brick",
+        "position": [
+          -99,
+          -99
+        ],
+        "rotation": 0
+      },
+      {
+        "name": "teleport_entrance",
+        "position": [
+          200,
+          150
+        ],
+        "rotation": 45,
+        "status": "on"
+      },
+      {
+        "name": "teleport_exit",
+        "position": [
+          70,
+          530
+        ],
+        "status": "on"
+      }
+    ]
+  },
+  {
+    "trial": 5,
+    "balls": [
+      {
+        "name": "B",
+        "position": [
+          830,
+          290
+        ],
+        "velocity": [
+          -0.9,
+          0
+        ]
+      },
+      {
+        "name": "A",
+        "position": [
+          830,
+          540
+        ],
+        "velocity": [
+          -0.9,
+          -0.5
+        ]
+      }],
+    "objects":[
+      {
+        "name": "brick",
+        "position": [
+          300,
+          405
+        ],
+        "rotation": 0
+      },
+      {
+        "name": "teleport_entrance",
+        "position": [
+          -99,
+          -99
+        ],
+        "rotation": 279,
+        "status": "off"
+      },
+      {
+        "name": "teleport_exit",
+        "position": [
+          -99,
+          -99
+        ],
+        "status": "off"
+      }
+    ]
+  },
+  {
+    "trial": 6,
+    "balls": [
+      {
+        "name": "B",
+        "position": [
+          830,
+          50
+        ],
+        "velocity": [
+          -1,
+          0.55
+        ]
+      },
+      {
+        "name": "A",
+        "position": [
+          850,
+          550
+        ],
+        "velocity": [
+          -1,
+          -0.6
+        ]
+      }],
+    "objects":[
+      {
+        "name": "brick",
+        "position": [
+          -99,
+          -99
+        ],
+        "rotation": 279
+      },
+      {
+        "name": "teleport_entrance",
+        "position": [
+          220,
+          410
+        ],
+        "rotation": 135,
+        "status": "on"
+      },
+      {
+        "name": "teleport_exit",
+        "position": [
+          50,
+          250
+        ],
+        "status": "on"
+      }
+    ]
+  },
+  {
+    "trial": 7,
+    "balls": [
+      {
+        "name": "B",
+        "position": [
+          830,
+          50
+        ],
+        "velocity": [
+          -1,
+          0.55
+        ]
+      },
+      {
+        "name": "A",
+        "position": [
+          850,
+          550
+        ],
+        "velocity": [
+          -1,
+          -0.432  
+        ]
+      }],
+    "objects":[
+      {
+        "name": "brick",
+        "position": [
+          -99,
+          -99
+        ],
+        "rotation": 279
+      },
+      {
+        "name": "teleport_entrance",
+        "position": [
+          220,
+          410
+        ],
+        "rotation": 135,
+        "status": "off"
+      },
+      {
+        "name": "teleport_exit",
+        "position": [
+          50,
+          250
+        ],
+        "status": "off"
+      }
+    ]
+  },
+  {
+    "trial": 8,
+    "balls": [
+      {
+        "name": "B",
+        "position": [
+          830,
+          50
+        ],
+        "velocity": [
+          -1,
+          0.55
+        ]
+      },
+      {
+        "name": "A",
+        "position": [
+          850,
+          550
+        ],
+        "velocity": [
+          -1,
+          -0.41
+        ]
+      }],
+    "objects":[
+      {
+        "name": "brick",
+        "position": [
+          -99,
+          -99
+        ],
+        "rotation": 279
+      },
+      {
+        "name": "teleport_entrance",
+        "position": [
+          220,
+          410
+        ],
+        "rotation": 135,
+        "status": "off"
+      },
+      {
+        "name": "teleport_exit",
+        "position": [
+          50,
+          250
+        ],
+        "status": "off"
+      }
+    ]
+  },
+  {
+    "trial": 9,
+    "balls": [
+      {
+        "name": "B",
+        "position": [
+          830,
+          50
+        ],
+        "velocity": [
+          -1,
+          0.4
+        ]
+      },
+      {
+        "name": "A",
+        "position": [
+          850,
+          550
+        ],
+        "velocity": [
+          -1,
+          -0.6
+        ]
+      }],
+    "objects":[
+      {
+        "name": "brick",
+        "position": [
+          -99,
+          -99
+        ],
+        "rotation": 279
+      },
+      {
+        "name": "teleport_entrance",
+        "position": [
+          170,
+          120
+        ],
+        "rotation": 45,
+        "status": "on"
+      },
+      {
+        "name": "teleport_exit",
+        "position": [
+          150,
+          260
+        ],
+        "status": "on"
+      }
+    ]
+  },
+  {
+    "trial": 10,
+    "balls": [
+      {
+        "name": "B",
+        "position": [
+          830,
+          50
+        ],
+        "velocity": [
+          -1,
+          0.45
+        ]
+      },
+      {
+        "name": "A",
+        "position": [
+          850,
+          550
+        ],
+        "velocity": [
+          -1,
+          -0.6
+        ]
+      }],
+    "objects":[
+      {
+        "name": "brick",
+        "position": [
+          -99,
+          -99
+        ],
+        "rotation": 279
+      },
+      {
+        "name": "teleport_entrance",
+        "position": [
+          170,
+          120
+        ],
+        "rotation": 45,
+        "status": "on"
+      },
+      {
+        "name": "teleport_exit",
+        "position": [
+          150,
+          270
+        ],
+        "status": "on"
+      }
+    ]
+  },
+  {
+    "trial": 11,
+    "balls": [
+      {
+        "name": "B",
+        "position": [
+          830,
+          50
+        ],
+        "velocity": [
+          -1,
+          0.55
+        ]
+      },
+      {
+        "name": "A",
+        "position": [
+          850,
+          550
+        ],
+        "velocity": [
+          -1,
+          -0.45
+        ]
+      }],
+    "objects":[
+      {
+        "name": "brick",
+        "position": [
+          -99,
+          -99
+        ],
+        "rotation": 279
+      },
+      {
+        "name": "teleport_entrance",
+        "position": [
+          220,
+          410
+        ],
+        "rotation": 135,
+        "status": "on"
+      },
+      {
+        "name": "teleport_exit",
+        "position": [
+          50,
+          250
+        ],
+        "status": "on"
+      }
+    ]
+  },
+  {
+    "trial": 12,
+    "balls": [
+      {
+        "name": "B",
+        "position": [
+          830,
+          50
+        ],
+        "velocity": [
+          -1,
+          0.55
+        ]
+      },
+      {
+        "name": "A",
+        "position": [
+          850,
+          550
+        ],
+        "velocity": [
+          -1,
+          -0.41
+        ]
+      }],
+    "objects":[
+      {
+        "name": "brick",
+        "position": [
+          -99,
+          -99
+        ],
+        "rotation": 279
+      },
+      {
+        "name": "teleport_entrance",
+        "position": [
+          220,
+          410
+        ],
+        "rotation": 135,
+        "status": "on"
+      },
+      {
+        "name": "teleport_exit",
+        "position": [
+          50,
+          250
+        ],
+        "status": "on"
+      }
+    ]
+  },
+  {
+    "trial": 13,
+    "balls": [
+      {
+        "name": "B",
+        "position": [
+          830,
+          50
+        ],
+        "velocity": [
+          -1,
+          0.55
+        ]
+      },
+      {
+        "name": "A",
+        "position": [
+          875,
+          550
+        ],
+        "velocity": [
+          -1,
+          -0.5
+        ]
+      }],
+    "objects":[
+      {
+        "name": "brick",
+        "position": [
+          -99,
+          -99
+        ],
+        "rotation": 279
+      },
+      {
+        "name": "teleport_entrance",
+        "position": [
+          220,
+          410
+        ],
+        "rotation": 135,
+        "status": "off"
+      },
+      {
+        "name": "teleport_exit",
+        "position": [
+          50,
+          250
+        ],
+        "status": "off"
+      }
+    ]
+  },
+  {
+    "trial": 14,
+    "balls": [
+      {
+        "name": "B",
+        "position": [
+          830,
+          290
+        ],
+        "velocity": [
+          -0.9,
+          0
+        ]
+      },
+      {
+        "name": "A",
+        "position": [
+          830,
+          540
+        ],
+        "velocity": [
+          -0.9,
+          -0.75
+        ]
+      }],
+    "objects":[
+      {
+        "name": "brick",
+        "position": [
+          300,
+          310
+        ],
+        "rotation": 0
+      },
+      {
+        "name": "teleport_entrance",
+        "position": [
+          -99,
+          -99
+        ],
+        "rotation": 279,
+        "status": "off"
+      },
+      {
+        "name": "teleport_exit",
+        "position": [
+          -99,
+          -99
+        ],
+        "status": "off"
+      }
+    ]
+  },
+  {
+    "trial": 15,
+    "balls": [
+      {
+        "name": "B",
+        "position": [
+          830,
+          50
+        ],
+        "velocity": [
+          -1,
+          0.4
+        ]
+      },
+      {
+        "name": "A",
+        "position": [
+          850,
+          550
+        ],
+        "velocity": [
+          -1,
+          -0.33
+        ]
+      }],
+    "objects":[
+      {
+        "name": "brick",
+        "position": [
+          -99,
+          -99
+        ],
+        "rotation": 279
+      },
+      {
+        "name": "teleport_entrance",
+        "position": [
+          200,
+          150
+        ],
+        "rotation": 45,
+        "status": "off"
+      },
+      {
+        "name": "teleport_exit",
+        "position": [
+          70,
+          350
+        ],
+        "status": "off"
+      }
+    ]
+  },
+  {
+    "trial": 16,
+    "balls": [
+      {
+        "name": "B",
+        "position": [
+          830,
+          50
+        ],
+        "velocity": [
+          -1,
+          0.45
+        ]
+      },
+      {
+        "name": "A",
+        "position": [
+          850,
+          550
+        ],
+        "velocity": [
+          -1,
+          -0.65
+        ]
+      }],
+    "objects":[
+      {
+        "name": "brick",
+        "position": [
+          -99,
+          -99
+        ],
+        "rotation": 279
+      },
+      {
+        "name": "teleport_entrance",
+        "position": [
+          200,
+          150
+        ],
+        "rotation": 45,
+        "status": "on"
+      },
+      {
+        "name": "teleport_exit",
+        "position": [
+          70,
+          350
+        ],
+        "status": "on"
+      }
+    ]
+  },
+  {
+    "trial": 17,
+    "balls": [
+      {
+        "name": "B",
+        "position": [
+          830,
+          50
+        ],
+        "velocity": [
+          -1,
+          0.55
+        ]
+      },
+      {
+        "name": "A",
+        "position": [
+          875,
+          550
+        ],
+        "velocity": [
+          -1,
+          -0.5
+        ]
+      }],
+    "objects":[
+      {
+        "name": "brick",
+        "position": [
+          -99,
+          -99
+        ],
+        "rotation": 279
+      },
+      {
+        "name": "teleport_entrance",
+        "position": [
+          220,
+          410
+        ],
+        "rotation": 135,
+        "status": "on"
+      },
+      {
+        "name": "teleport_exit",
+        "position": [
+          50,
+          250
+        ],
+        "status": "on"
+      }
+    ]
+  },
+  {
+    "trial": 18,
+    "balls": [
+      {
+        "name": "B",
+        "position": [
+          830,
+          290
+        ],
+        "velocity": [
+          -0.9,
+          0
+        ]
+      },
+      {
+        "name": "A",
+        "position": [
+          830,
+          540
+        ],
+        "velocity": [
+          -0.9,
+          -0.75
+        ]
+      }],
+    "objects":[
+      {
+        "name": "brick",
+        "position": [
+          300,
+          405
+        ],
+        "rotation": 0
+      },
+      {
+        "name": "teleport_entrance",
+        "position": [
+          -99,
+          -99
+        ],
+        "rotation": 279,
+        "status": "off"
+      },
+      {
+        "name": "teleport_exit",
+        "position": [
+          -99,
+          -99
+        ],
+        "status": "off"
+      }
+    ]
+  },
+  {
+    "trial": 19,
+    "balls": [
+      {
+        "name": "B",
+        "position": [
+          830,
+          290
+        ],
+        "velocity": [
+          -0.9,
+          0
+        ]
+      },
+      {
+        "name": "A",
+        "position": [
+          830,
+          540
+        ],
+        "velocity": [
+          -0.9,
+          -0.5
+        ]
+      }],
+    "objects":[
+      {
+        "name": "brick",
+        "position": [
+          180,
+          400
+        ],
+        "rotation": 0
+      },
+      {
+        "name": "teleport_entrance",
+        "position": [
+          100,
+          100
+        ],
+        "rotation": 45,
+        "status": "on"
+      },
+      {
+        "name": "teleport_exit",
+        "position": [
+          300,
+          500
+        ],
+        "status": "on"
+      }
+    ]
+  },
+  {
+    "trial": 20,
+    "balls": [
+      {
+        "name": "B",
+        "position": [
+          830,
+          290
+        ],
+        "velocity": [
+          -0.9,
+          0
+        ]
+      },
+      {
+        "name": "A",
+        "position": [
+          830,
+          50
+        ],
+        "velocity": [
+          -0.9,
+          0.75
+        ]
+      }],
+    "objects":[
+      {
+        "name": "brick",
+        "position": [
+          250,
+          200
+        ],
+        "rotation": 0
+      },
+      {
+        "name": "teleport_entrance",
+        "position": [
+          650,
+          300
+        ],
+        "rotation": 0,
+        "status": "off"
+      },
+      {
+        "name": "teleport_exit",
+        "position": [
+          80,
+          350
+        ],
+        "status": "off"
+      }
+    ]
+  }
+]
