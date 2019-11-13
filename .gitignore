@@ -5,3 +5,5 @@
 .RData	
 *.utf8.md	
 *.knit.md	
+*.pyc
+__pycache__/

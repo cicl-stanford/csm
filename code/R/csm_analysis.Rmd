@@ -477,9 +477,6 @@ fit.brm_exp1_causal = brm(formula = rating ~ 1 + index_actual + index_counterfac
                           cores = 2,
                           seed = 1,
                           file = "cache/brm_exp1_causal")
-
-fit.brm_exp1_causal %>% 
-  summary()
 ```
 
 #### Specific hypotheses 
@@ -790,10 +787,6 @@ fit.brm_exp2_counterfactual = brm(formula = rating ~ 1 + condition * (index_actu
                                   cores = 2,
                                   seed = 1,
                                   file = "cache/brm_exp2_counterfactual")
-
-fit.brm_exp2_counterfactual %>% 
-  summary()
-
 ```
 ### Tables
 
@@ -921,10 +914,6 @@ fit.brm_exp2_causal = brm(formula = rating ~ 1 + condition * (index_actual + ind
                           cores = 2,
                           seed = 1,
                           file = "cache/brm_exp2_causal")
-
-fit.brm_exp2_causal %>% 
-  summary()
-
 ```
 
 #### Specific hypotheses 
@@ -1182,9 +1171,7 @@ df.exp3.model.causal = df.exp3.model %>%
 
 ### Heuristic model 
 
-- clean up this section (use map instead of for loop)
-
-```{r}
+```{r, warning=F, message=F}
 l.features = fromJSON("data/features.json")
 
 df.features.initial = l.features[["appearance"]] %>%
@@ -1250,7 +1237,7 @@ tmp = df.features.collisions %>%
 
 # remove events that happen after the end of the clip
 df.features.collisions = df.features.collisions %>%
-  left_join(tmp) %>%
+  left_join(tmp, by = "clip") %>%
   mutate(endclip = ifelse(is.na(endclip), 400, endclip)) %>%
   group_by(clip) %>%
   filter(time <= endclip)
@@ -1269,7 +1256,8 @@ tmp.contactE = df.features.collisions %>%
   select(clip, ball, contactE) %>%
   group_by(clip, ball) %>%
   summarise(contactE = any(contactE %>% as.logical()) * 1) %>%
-  left_join(expand.grid(clip = 1:32, ball = c("A", "B")), .) %>%
+  left_join(expand.grid(clip = 1:32, ball = c("A", "B")), .,
+            by = c("clip", "ball")) %>%
   mutate(contactE = ifelse(is.na(contactE), 0, contactE))
 
 # number of collisions
@@ -1337,7 +1325,8 @@ tmp.impactE = df.features.collisions %>%
   ) %>%
   rename(ball = object) %>%
   mutate(ball = factor(ball, levels = c("ballA", "ballB"), labels = c("A", "B"))) %>%
-  left_join(expand.grid(clip = 1:32, ball = c("A", "B")), .) %>%
+  left_join(expand.grid(clip = 1:32, ball = c("A", "B")), .,
+            by = c("clip", "ball")) %>%
   mutate_at(.vars = vars(speed.diff, direction.diff), .funs = ~ ifelse(is.na(.), 0, .)) %>%
   arrange(clip, ball) %>%
   rename(
@@ -1364,7 +1353,8 @@ tmp.impactTotal = df.features.collisions %>%
   ) %>%
   rename(ball = object) %>%
   mutate(ball = factor(ball, levels = c("ballA", "ballB"), labels = c("A", "B"))) %>%
-  left_join(expand.grid(clip = 1:32, ball = c("A", "B")), .) %>%
+  left_join(expand.grid(clip = 1:32, ball = c("A", "B")), .,
+            by = c("clip", "ball")) %>%
   mutate_at(.vars = vars(speed.diff, direction.diff), .funs = ~ ifelse(is.na(.), 0, .)) %>%
   arrange(clip, ball) %>%
   rename(
@@ -1465,7 +1455,8 @@ actual_counterfactual_threeballs_plot(df.plot, "counterfactual judgment")
 ```{r}
 # best fitting model 
 df.exp3.counterfactual.means %>% 
-  left_join(df.exp3.model.counterfactual) %>% 
+  left_join(df.exp3.model.counterfactual,
+            by = c("clip", "ball")) %>% 
   summarize(simulation_r = cor(rating_mean, prediction),
             simulation_rmse = rmse(rating_mean, prediction)) %>% 
   mutate_all(~ round(., 2))
@@ -1477,7 +1468,8 @@ df.exp3.counterfactual.means %>%
               gather("ball", "outcome", -clip) %>% 
               mutate(ball = factor(ball,
                                    levels = c("outcome_a", "outcome_b"),
-                                   labels = c("B", "A")))) %>% 
+                                   labels = c("B", "A"))),
+            by = c("clip", "ball")) %>% 
   mutate(outcome = outcome * 100) %>% 
   summarize(simulation_r = cor(rating_mean, outcome),
             simulation_rmse = rmse(rating_mean, outcome)) %>% 
@@ -1516,9 +1508,9 @@ fit.brm_exp3_causal_whs = brm(formula = rating ~ 1 + whether + how + sufficient 
                                     seed = 1,
                                     file = "cache/brm_exp3_causal_whs")
 
-fit.brm_exp3_causal_w %>% summary()
-fit.brm_exp3_causal_wh %>% summary()
-fit.brm_exp3_causal_whs %>% summary()
+# fit.brm_exp3_causal_w %>% summary()
+# fit.brm_exp3_causal_wh %>% summary()
+# fit.brm_exp3_causal_whs %>% summary()
 ```
 
 #### Model comparison
@@ -1725,13 +1717,13 @@ df.exp3.causal.individual_fit = df.fit %>%
                              labels = c("baseline", "w", "wh", "whs")))
 
 save(list = c("df.exp3.causal.individual_fit"),
-     file = "cache/exp3_causal_individual_fit.RData")
+     file = "data/exp3_causal_individual_fit.RData")
 ```
 
 #### Load individual participant regressions
 
 ```{r}
-load("cache/exp3_causal_individual_fit.RData")
+load("data/exp3_causal_individual_fit.RData")
 
 # count how many participants are best fit by the different models
 df.exp3.causal.individual_fit %>% 
@@ -2265,7 +2257,8 @@ df.exp3.causal.individual_fit %>%
 
 ```{r}
 df.table = df.exp3.model.causal %>%
-  left_join(df.exp3.causal.regression) %>% 
+  left_join(df.exp3.causal.regression,
+            by = c("clip", "ball")) %>% 
   filter(clip %in% c(7, 23, 16, 3, 15)) %>%
   mutate_at(.vars = vars(difference, robust, sufficient, whether, heuristic), .funs = ~ round(., 2)) %>%
   select(clip, ball, difference, whether, how, sufficient, robust) %>%
