@@ -81,7 +81,6 @@ actual_counterfactual_plot = function(x, ylabel) {
                     expand = F,
                     clip = "off") +
     labs(y = ylabel) +
-    theme_bw() + 
     theme(text = element_text(size = 20),
           legend.position = "none",
           axis.text.x = element_blank(),
@@ -92,8 +91,7 @@ actual_counterfactual_plot = function(x, ylabel) {
           axis.title.x = element_blank(),
           panel.grid = element_blank(),
           strip.background = element_blank(),
-          panel.border = element_rect(colour = "black",
-                                      fill = NA))
+          panel.border = element_rect(colour = "black", fill = NA))
   print(p)
 }
 
@@ -114,7 +112,9 @@ actual_counterfactual_threeballs_plot = function(x, ylabel) {
                  position = position_dodge(0.9)) +
     geom_point(data = x %>% 
                  mutate(value = ifelse(model == "rating", value, NA)),
-               position = position_jitterdodge(jitter.width = 0.3, jitter.height = 0, dodge.width = 0.9),
+               position = position_jitterdodge(jitter.width = 0.3,
+                                               jitter.height = 0,
+                                               dodge.width = 0.9),
                shape = 21,
                color = "black",
                size = 1,
@@ -136,7 +136,6 @@ actual_counterfactual_threeballs_plot = function(x, ylabel) {
     scale_fill_manual(values = c("red2", "green2", "black")) +
     scale_color_manual(values = c("red2", "green2", "black")) +
     labs(y = ylabel) +
-    theme_bw() + 
     theme(text = element_text(size = 16),
           legend.position = "none",
           axis.title.x = element_blank(),
@@ -144,8 +143,7 @@ actual_counterfactual_threeballs_plot = function(x, ylabel) {
           panel.grid = element_blank(),
           strip.background = element_blank(),
           strip.text = element_blank(),
-          panel.border = element_rect(colour = "black",
-                                      fill = NA))
+          panel.border = element_rect(colour = "black", fill = NA))
   print(p)
 }
 
@@ -153,9 +151,7 @@ actual_counterfactual_threeballs_plot = function(x, ylabel) {
 
 ```{r}
 # set ggplot theme 
-theme_set(
-  theme_classic()
-)
+theme_set(theme_classic())
 ```
 
 # Experiment 1: 2 balls
@@ -331,12 +327,18 @@ df.plot = df.exp1.counterfactual.long %>%
                    "outcome_counterfactual",
                    "index_actual",
                    "index_counterfactual")) %>% 
-  gather("model", "value", c(rating, prediction)) %>% 
+  pivot_longer(cols = c(rating, prediction),
+               names_to = "model",
+               values_to = "value") %>% 
   mutate(colorindex = ifelse(outcome_counterfactual == 1, 2, 1),
          colorindex = ifelse(model != "rating", 3, colorindex),
          colorindex = as.factor(colorindex),
-         index_actual = factor(index_actual,levels = c("actual miss", "actual close", "actual hit")),
-         index_counterfactual = factor(index_counterfactual,levels = c("counterfactual miss", "counterfactual close", "counterfactual hit")),
+         index_actual = factor(index_actual,
+                               levels = c("actual miss", "actual close", "actual hit")),
+         index_counterfactual = factor(index_counterfactual,
+                                       levels = c("counterfactual miss",
+                                                  "counterfactual close",
+                                                  "counterfactual hit")),
          model = factor(model, levels = c("rating", "prediction"))) %>% 
   mutate(clipindex = ifelse(clip == 11, 2, clipindex),
          clipindex = ifelse(clip == 12, 1, clipindex)) #swap clips 11 and 12
@@ -392,7 +394,9 @@ df.plot = df.exp1.causal.long %>%
                    "outcome_counterfactual",
                    "index_actual",
                    "index_counterfactual")) %>%
-  gather("model", "value", c(rating, simulation, empirical)) %>%
+  pivot_longer(cols = c(rating, simulation, empirical),
+               names_to = "model",
+               values_to = "value") %>% 
   filter(model %in% c(model.name, "rating")) %>%
   mutate(model = factor(model, levels = c("rating", model.name))) %>%
   mutate(
@@ -459,7 +463,9 @@ df.exp1.causal.long %>%
 
 ```{r}
 # random intercepts model 
-fit.brm_exp1_causal = brm(formula = rating ~ 1 + index_actual + index_counterfactual + outcome_actual + (1 + index_actual + index_counterfactual + outcome_actual | participant),
+fit.brm_exp1_causal = brm(formula = rating ~ 1 + index_actual + index_counterfactual + 
+                            outcome_actual + (1 + index_actual + index_counterfactual + 
+                                                outcome_actual | participant),
                           data = df.exp1.causal.long,
                           cores = 2,
                           seed = 1,
@@ -478,7 +484,8 @@ df.exp1.causal.posterior = df.exp1.causal.long %>%
                    re_formula = NA) %>% 
   ungroup() %>% 
   select(clip, .value, .draw) %>% 
-  spread(clip, .value)
+  pivot_wider(names_from = clip,
+              values_from = .value)
 
 func_posterior_difference = function(data, clip1, clip2){
   data %>% 
@@ -524,8 +531,12 @@ include_graphics("../../figures/diagrams/exp2_diagrams.png")
 ## Read in data 
 
 ```{r}
-df.exp2.causal_first = read.csv("../../data/experiment2_causal_first.csv", header = T, stringsAsFactors = F)
-df.exp2.counterfactual_first = read.csv("../../data/experiment2_counterfactual_first.csv", header = T, stringsAsFactors = F)
+df.exp2.causal_first = read.csv("../../data/experiment2_causal_first.csv",
+                                header = T,
+                                stringsAsFactors = F)
+df.exp2.counterfactual_first = read.csv("../../data/experiment2_counterfactual_first.csv",
+                                        header = T,
+                                        stringsAsFactors = F)
 
 # Information about each clip
 
@@ -587,7 +598,8 @@ df.exp2.counterfactual_first.long = df.exp2.counterfactual_first$data %>%
 # combine data from both conditions
 df.exp2.combined.long = df.exp2.causal_first.long %>%
   bind_rows(df.exp2.counterfactual_first.long %>% 
-              mutate(participant = participant + max(df.exp2.causal_first.long$participant)))
+              mutate(participant = participant + 
+                       max(df.exp2.causal_first.long$participant)))
 ```
 
 ### Demographics 
@@ -666,12 +678,10 @@ df.exp2.causal.model = df.exp2.combined.long %>%
   ) %>%
   group_by(clip, condition) %>%
   summarize(rating = mean(rating)) %>%
-  spread(condition, rating) %>% 
+  pivot_wider(names_from = condition,
+              values_from = rating) %>% 
   left_join(df.exp2.combined.long %>%
-              filter(
-                question == "counterfactual",
-                clip <= 18
-              ) %>%
+              filter(question == "counterfactual", clip <= 18) %>%
               group_by(clip) %>%
               summarize(combined = mean(rating)),
             by = "clip") %>% 
@@ -679,7 +689,8 @@ df.exp2.causal.model = df.exp2.combined.long %>%
             by = "clip") %>% 
   select(-c(correlation, noise)) %>% 
   rename(simulation = prediction) %>% 
-  mutate_at(.vars = vars(simulation, causal_first, counterfactual_first, combined), .funs = list(~ ifelse(outcome_actual == 1, 100 - ., .)))
+  mutate_at(.vars = vars(simulation, causal_first, counterfactual_first, combined),
+            .funs = list(~ ifelse(outcome_actual == 1, 100 - ., .)))
 
 ```
 
@@ -699,7 +710,9 @@ df.plot = df.exp2.combined.long %>%
                    "outcome_counterfactual", 
                    "index_actual", 
                    "index_counterfactual")) %>%
-  gather("model", "value", c(rating, prediction)) %>%
+  pivot_longer(cols = c(rating, prediction),
+               names_to = "model",
+               values_to = "value") %>% 
   mutate(colorindex = ifelse(outcome_counterfactual == 1, 2, 1),
          colorindex = ifelse(model != "rating", 3, colorindex),
          colorindex = as.factor(colorindex),
@@ -758,7 +771,9 @@ df.exp2.counterfactual.means %>%
 
 ```{r}
 # random intercepts & slopes model 
-fit.brm_exp2_counterfactual = brm(formula = rating ~ 1 + condition * (index_actual + index_counterfactual) + (1 + index_actual + index_counterfactual | participant),
+fit.brm_exp2_counterfactual = brm(formula = rating ~ 1 + condition * 
+                                    (index_actual + index_counterfactual) + 
+                                    (1 + index_actual + index_counterfactual | participant),
                                   data = df.exp2.combined.long %>% 
                                     na.omit() %>% 
                                     filter(question == "counterfactual"),
@@ -815,7 +830,9 @@ df.plot = df.exp2.combined.long %>%
                    "outcome_counterfactual", 
                    "index_actual", 
                    "index_counterfactual")) %>%
-  gather("model", "value", c("rating", model.name)) %>%
+  pivot_longer(cols = c("rating", model.name),
+               names_to = "model",
+               values_to = "value") %>% 
   mutate(model = factor(model, levels = c("rating", model.name))) %>%
   mutate(
     colorindex = ifelse(outcome_actual == 1, 2, 1),
@@ -884,8 +901,10 @@ df.exp2.combined.long %>%
 
 ```{r}
 # random intercepts + slopes model 
-fit.brm_exp2_causal = brm(formula = rating ~ 1 + condition * (index_actual + index_counterfactual + outcome_actual) +
-                            (1 + index_actual + index_counterfactual + outcome_actual | participant),
+fit.brm_exp2_causal = brm(formula = rating ~ 1 + condition * 
+                            (index_actual + index_counterfactual + outcome_actual) +
+                            (1 + index_actual + index_counterfactual + 
+                               outcome_actual | participant),
                           data = df.exp2.combined.long %>% 
                             filter(question == "causal",
                                    clip <= 18),
@@ -908,7 +927,8 @@ df.exp2.causal.posterior = df.exp2.combined.long %>%
                    re_formula = NA) %>% 
   ungroup() %>% 
   select(clip, condition, .value, .draw) %>% 
-  spread(clip, .value)
+  pivot_wider(names_from = clip,
+              values_from = .value)
 
 # difference between clips 13 and 14 versus 8 
 df.exp2.causal.posterior %>% 
@@ -959,96 +979,93 @@ include_graphics("../../figures/diagrams/exp3_diagrams.png")
 ```{r}
 # clipinfo
 df.exp3.clipinfo = tibble(clip = 1:32,
-                          outcome_both = c(0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1),
-                          outcome_a = c(0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1),
-                          outcome_b = c(0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1),
-                          outcome_none = c(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+                          outcome_both = c(0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 
+                                           0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1),
+                          outcome_a = c(0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 
+                                        0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1),
+                          outcome_b = c(0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 
+                                        0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1),
+                          outcome_none = c(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+                                           1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
                           clipindex = rep(1:2, 16))
 
 # COUNTERFACTUAL JUDGMENTS 
-df.exp3.counterfactual = read.csv("../../data/experiment3_counterfactual.csv", header = T, stringsAsFactors = F)
+df.exp3.counterfactual = read.csv("../../data/experiment3_counterfactual.csv",
+                                  header = T,
+                                  stringsAsFactors = F)
 
 # demographics
-df.exp3.counterfactual.demographics = df.exp3.counterfactual$extra %>%
-  strsplit("\n") %>%
-  unlist() %>%
-  strsplit(",") %>%
-  unlist() %>%
-  matrix(ncol = 6, byrow = T) %>%
-  as.data.frame(stringsAsFactors = F) %>%
-  mutate_all("as.numeric") %>%
-  setNames(c("gender", "age", "difficulty", "smoothness", "time", "condition")) %>%
-  mutate(
-    participant = 1:nrow(.),
-    condition = factor(condition, levels = 20:21, labels = c("A", "B")),
-    gender = factor(gender, levels = 1:2, labels = c("female", "male"))
-  ) %>% 
+df.exp3.counterfactual.demographics = df.exp3.counterfactual$extra %>% 
+  as_tibble() %>% 
+  separate_rows(value) %>% 
+  mutate(value = as.numeric(value),
+         name = rep(c("gender", "age", "difficulty", "smoothness", "time", "condition"),
+                    n()/6),
+         participant = rep(1:(n()/6), each = 6)) %>% 
+  pivot_wider(names_from = name,
+              values_from = value) %>% 
+  mutate(condition = factor(condition, levels = 20:21, labels = c("A", "B")),
+         gender = factor(gender, levels = 1:2, labels = c("female", "male"))) %>% 
   select(participant, condition, gender, age, time, smoothness, difficulty)
 
 # judgments
 df.exp3.counterfactual.long = df.exp3.counterfactual$data %>%
-  strsplit("\n") %>%
-  unlist() %>%
-  strsplit(",") %>%
-  unlist() %>%
-  matrix(ncol = 64, byrow = T) %>%
-  as.data.frame(stringsAsFactors = F) %>%
-  mutate_all("as.numeric") %>%
-  setNames(str_c(c("clip_", "rating_"), rep(1:32, each = 2))) %>%
-  mutate(participant = 1:nrow(.)) %>%
-  gather("index", "value", -participant) %>% 
-  separate(index, into = c("index", "order")) %>% 
-  mutate(order = as.numeric(order)) %>% 
-  spread(index, value) %>%
-  left_join(select(df.exp3.counterfactual.demographics, participant, ball = condition),
+  as_tibble() %>% 
+  separate_rows(value) %>% 
+  mutate(value = as.numeric(value),
+         name = rep(c("clip", "rating"), n()/2),
+         participant = rep(1:(n()/64), each = 64),
+         order = rep(rep(1:32, each = 2), n()/64)) %>% 
+  pivot_wider(names_from = name,
+              values_from = value) %>% 
+  left_join(df.exp3.counterfactual.demographics %>% 
+              select(participant, ball = condition),
             by = "participant") %>% 
-  select(participant, ball, clip, everything()) %>%
+  select(participant, ball, clip, everything()) %>% 
   arrange(participant, clip)
 
 # CAUSAL JUDGMENTS
-df.exp3.causal = read.csv("../../data/experiment3_causal.csv", header = T, stringsAsFactors = F)
+df.exp3.causal = read.csv("../../data/experiment3_causal.csv",
+                          header = T,
+                          stringsAsFactors = F)
 
 # demographics 
-df.exp3.causal.demographics = df.exp3.causal$extra %>%
-  strsplit("\n") %>%
-  unlist() %>%
-  strsplit(",") %>%
-  unlist() %>%
-  matrix(nrow = nrow(df.exp3.causal), byrow = T) %>%
-  as.data.frame(stringsAsFactors = F) %>%
-  mutate_all("as.numeric") %>%
-  setNames(c("gender", "age", "difficulty", "smoothness", "time", "counterbalance", "replayType", "experiment")) %>%
-  mutate(participant = 1:nrow(.),
-         counterbalance = ifelse(participant %in% c(1, 3, 5, 6, 9), 1, counterbalance),
-         gender = factor(gender, levels = 1:2, labels = c("female", "male"))) %>%
+df.exp3.causal.demographics = df.exp3.causal$extra %>% 
+  as_tibble() %>% 
+  separate_rows(value) %>% 
+  mutate(value = as.numeric(value),
+         name = rep(c("gender", "age", "difficulty", "smoothness", "time", 
+                      "counterbalance", "replayType", "experiment"),
+                    n()/8),
+         participant = rep(1:(n()/8), each = 8)) %>% 
+  pivot_wider(names_from = name,
+              values_from = value) %>% 
+  mutate(counterbalance = ifelse(participant %in% c(1, 3, 5, 6, 9), 1, counterbalance),
+         gender = factor(gender, levels = 1:2, labels = c("female", "male"))) %>% 
   select(participant, gender, age, counterbalance, time, smoothness, difficulty)
-  
+
 # judgments
 df.exp3.causal.long = df.exp3.causal$data %>%
-  strsplit("\n") %>%
-  unlist() %>%
-  strsplit(",") %>%
-  unlist() %>%
-  matrix(ncol = 192, byrow = T) %>%
-  as.data.frame(stringsAsFactors = F) %>%
-  mutate_all("as.numeric") %>%
-  setNames(str_c(c("clip_", "X_", "Y_", "Z_", "rating1_", "rating2_"), rep(1:32, each = 6))) %>%
-  select(contains("clip"), contains("rating")) %>%
-  mutate(participant = 1:nrow(.)) %>%
-  gather("index", "value", -participant) %>% 
-  separate(index, into = c("index", "order")) %>% 
-  mutate(order = as.numeric(order)) %>% 
-  spread(index, value) %>% 
-  left_join(select(df.exp3.causal.demographics, participant, counterbalance),
+  as_tibble() %>% 
+  separate_rows(value) %>% 
+  mutate(value = as.numeric(value),
+         name = rep(c("clip", "x", "y", "z", "rating1", "rating2"), n()/6),
+         participant = rep(1:(n()/(32*6)), each = (32*6)),
+         order = rep(rep(1:32, each = 6), n()/(32*6))) %>% 
+  filter(!name %in% c("x", "y", "z")) %>% 
+pivot_wider(names_from = name,
+            values_from = value) %>% 
+  left_join(df.exp3.causal.demographics %>% 
+              select(participant, counterbalance),
             by = "participant") %>% 
-  arrange(participant, clip) %>% 
   mutate(A = ifelse(counterbalance == 1, rating1, rating2),
          B = ifelse(counterbalance == 1, rating2, rating1)) %>% 
   select(-rating1, -rating2) %>% 
-  gather("ball", "rating", c(A, B)) %>% 
+  pivot_longer(cols = c(A, B),
+               names_to = "ball",
+               values_to = "rating") %>% 
   select(participant, clip, ball, rating, order) %>% 
   arrange(participant, clip, ball)
-
 ```
 
 ### Demographics 
@@ -1101,7 +1118,9 @@ df.exp3.counterfactual.means = df.exp3.counterfactual.long %>%
 # find noisy simulation model that correlates best with the mean counterfactual judgments
 df.exp3.model.counterfactual = df.exp3.model %>% 
   select(clip, contains("whether"), noise) %>% 
-  gather("ball", "prediction", c(A_whether, B_whether)) %>% 
+  pivot_longer(cols = c(A_whether, B_whether),
+               names_to = "ball",
+               values_to = "prediction") %>% 
   mutate(ball = str_remove(ball, "_whether")) %>% 
   arrange(noise, clip, ball) %>% 
   left_join(df.exp3.clipinfo, by = "clip") %>% 
@@ -1135,11 +1154,14 @@ df.exp3.model.causal = df.exp3.model %>%
   mutate_at(.vars = vars(B_how:B_robust),
             .funs = list(~ . * B_difference)) %>% 
   # choose model based on best fit with counterfactual data 
-  filter(noise == unique(df.exp3.model.counterfactual$noise)) %>%
-  gather("index", "value", A_difference:B_robust) %>% 
-  separate(index, into = c("ball", "aspect")) %>% 
-  spread(aspect, value) %>% 
-  select(clip, ball:whether)
+  filter(noise == unique(df.exp3.model.counterfactual$noise)) %>% 
+  pivot_longer(cols = A_difference:B_robust,
+               names_to = c("ball", "aspect"),
+               names_sep = "_",
+               values_to = "value") %>% 
+  pivot_wider(names_from = aspect,
+              values_from = value) %>% 
+  select(clip, ball:robust)
 
 # add whether-causation based on participants' counterfactual judgments
 
@@ -1151,7 +1173,9 @@ left_join(df.exp3.counterfactual.long %>%
               left_join(df.exp3.clipinfo %>% 
                           select(clip, outcome_both),
                         by = "clip") %>% 
-              mutate(whether_empirical = ifelse(outcome_both == 1, 100 - whether_empirical, whether_empirical),
+              mutate(whether_empirical = ifelse(outcome_both == 1,
+                                                100 - whether_empirical,
+                                                whether_empirical),
                      whether_empirical = whether_empirical/100) %>% 
               select(-outcome_both),
             by = c("clip", "ball")) %>% 
@@ -1167,15 +1191,13 @@ df.features.initial = l.features[["appearance"]] %>%
   cbind(l.features[["initialVelocity"]][["ballA"]]) %>%
   cbind(l.features[["initialVelocity"]][["ballB"]]) %>%
   cbind(l.features[["initialVelocity"]][["ballE"]]) %>%
-  setNames(c(
-    str_c("ball", LETTERS[c(1, 2, 5)], "_appearance"),
-    "ballA_velx",
-    "ballA_vely",
-    "ballB_velx",
-    "ballB_vely",
-    "ballE_velx",
-    "ballE_vely"
-  )) %>%
+  setNames(c(str_c("ball", LETTERS[c(1, 2, 5)], "_appearance"),
+             "ballA_velx",
+             "ballA_vely",
+             "ballB_velx",
+             "ballB_vely",
+             "ballE_velx",
+             "ballE_vely")) %>%
   mutate(clip = 1:nrow(.)) %>%
   pivot_longer(cols = starts_with("ball")) %>%
   separate(name, into = c("ball", "property")) %>%
@@ -1207,17 +1229,15 @@ for (i in 1:32) {
   }
   df.features.collisions = df.features.collisions %>%
     rbind(df.tmp %>%
-      mutate(clip = i) %>%
-      select(clip, ball, everything()))
+            mutate(clip = i) %>%
+            select(clip, ball, everything()))
 }
 
 # find end of clip
 tmp = df.features.collisions %>%
   group_by(clip) %>%
-  filter(
-    ball == "ballE",
-    str_detect(object, "goal|Left|Right")
-  ) %>%
+  filter(ball == "ballE",
+         str_detect(object, "goal|Left|Right")) %>%
   group_by(clip) %>%
   mutate(endclip = max(time)) %>%
   select(clip, endclip) %>%
@@ -1244,17 +1264,15 @@ tmp.contactE = df.features.collisions %>%
   mutate(contactE = 1) %>%
   select(clip, ball, contactE) %>%
   group_by(clip, ball) %>%
-  summarise(contactE = any(contactE %>% as.logical()) * 1) %>%
+  summarize(contactE = any(contactE %>% as.logical()) * 1) %>%
   left_join(expand.grid(clip = 1:32, ball = c("A", "B")), .,
             by = c("clip", "ball")) %>%
   mutate(contactE = ifelse(is.na(contactE), 0, contactE))
 
 # number of collisions
 tmp.ncollisions = df.features.collisions %>%
-  filter(
-    str_detect(object, "ball"),
-    ball != "ballE"
-  ) %>%
+  filter(str_detect(object, "ball"),
+         ball != "ballE") %>%
   mutate(ball = factor(ball, levels = c("ballA", "ballB"), labels = c("A", "B"))) %>%
   group_by(clip, ball) %>%
   count() %>%
@@ -1262,26 +1280,20 @@ tmp.ncollisions = df.features.collisions %>%
 
 # exclusivity (no contact with ball E by the other ball)
 tmp.exclusive = df.features.collisions %>%
-  filter(
-    str_detect(object, "ball"),
-    ball != "ballE"
-  ) %>%
+  filter(str_detect(object, "ball"),
+         ball != "ballE") %>%
   count(clip, ball, object) %>%
-  mutate(
-    AE = ifelse(ball == "ballA" & object == "ballE", 1, 0),
-    BE = ifelse(ball == "ballB" & object == "ballE", 1, 0)
-  ) %>%
+  mutate(AE = ifelse(ball == "ballA" & object == "ballE", 1, 0),
+         BE = ifelse(ball == "ballB" & object == "ballE", 1, 0)) %>%
   group_by(clip) %>%
-  summarise(
-    AE = any(AE %>% as.logical()) * 1,
-    BE = any(BE %>% as.logical()) * 1
-  ) %>%
-  mutate(
-    A = ifelse(AE == 1 & BE == 0, 1, 0),
-    B = ifelse(AE == 0 & BE == 1, 1, 0)
-  ) %>%
+  summarize(AE = any(AE %>% as.logical()) * 1,
+            BE = any(BE %>% as.logical()) * 1) %>%
+  mutate(A = ifelse(AE == 1 & BE == 0, 1, 0),
+         B = ifelse(AE == 0 & BE == 1, 1, 0)) %>%
   select(clip, A, B) %>%
-  gather(ball, exclusive, -clip)
+  pivot_longer(cols = -clip,
+               names_to = "ball",
+               values_to = "exclusive")
 
 # impact
 func_angle = function(x, y) {
@@ -1295,94 +1307,83 @@ func_angle = function(x, y) {
 # impact on ball E 
 tmp.impactE = df.features.collisions %>%
   rowwise() %>%
-  filter(
-    str_detect(object, "ball"),
-    ball == "ballE"
-  ) %>%
-  mutate(
-    pre.speed = abs(pre.velx) + abs(pre.vely),
-    post.speed = abs(post.velx) + abs(post.vely),
-    speed.diff = post.speed - pre.speed,
-    direction.diff = func_angle(c(pre.velx, pre.vely), c(post.velx, post.vely)),
-    direction.diff = ifelse(is.na(direction.diff), abs(atan2(post.vely - pre.vely, post.velx - pre.velx)), direction.diff)
-  ) %>%
+  filter(str_detect(object, "ball"),
+         ball == "ballE") %>%
+  mutate(pre.speed = abs(pre.velx) + abs(pre.vely),
+         post.speed = abs(post.velx) + abs(post.vely),
+         speed.diff = post.speed - pre.speed,
+         direction.diff = func_angle(c(pre.velx, pre.vely), c(post.velx, post.vely)),
+         direction.diff = ifelse(is.na(direction.diff),
+                                 abs(atan2(post.vely - pre.vely, post.velx - pre.velx)),
+                                 direction.diff)) %>%
   ungroup() %>%
   group_by(clip, object) %>%
-  summarise(
-    speed.diff = sum(speed.diff),
-    direction.diff = sum(direction.diff)
-  ) %>%
+  summarize(speed.diff = sum(speed.diff),
+            direction.diff = sum(direction.diff)) %>%
   rename(ball = object) %>%
   mutate(ball = factor(ball, levels = c("ballA", "ballB"), labels = c("A", "B"))) %>%
   left_join(expand.grid(clip = 1:32, ball = c("A", "B")), .,
             by = c("clip", "ball")) %>%
   mutate_at(.vars = vars(speed.diff, direction.diff), .funs = ~ ifelse(is.na(.), 0, .)) %>%
   arrange(clip, ball) %>%
-  rename(
-    E.speed.diff = speed.diff,
-    E.direction.diff = direction.diff
-  )
+  rename(E.speed.diff = speed.diff,
+         E.direction.diff = direction.diff)
 
 # total impact 
 tmp.impactTotal = df.features.collisions %>%
   rowwise() %>%
   filter(str_detect(object, "ballA|ballB")) %>%
-  mutate(
-    pre.speed = abs(pre.velx) + abs(pre.vely),
-    post.speed = abs(post.velx) + abs(post.vely),
-    speed.diff = post.speed - pre.speed,
-    direction.diff = func_angle(c(pre.velx, pre.vely), c(post.velx, post.vely)),
-    direction.diff = ifelse(is.na(direction.diff), abs(atan2(post.vely - pre.vely, post.velx - pre.velx)), direction.diff)
-  ) %>%
+  mutate(pre.speed = abs(pre.velx) + abs(pre.vely),
+         post.speed = abs(post.velx) + abs(post.vely),
+         speed.diff = post.speed - pre.speed,
+         direction.diff = func_angle(c(pre.velx, pre.vely), c(post.velx, post.vely)),
+         direction.diff = ifelse(is.na(direction.diff),
+                                 abs(atan2(post.vely - pre.vely, post.velx - pre.velx)),
+                                 direction.diff)) %>%
   ungroup() %>%
   group_by(clip, object) %>%
-  summarise(
-    speed.diff = sum(speed.diff),
-    direction.diff = sum(direction.diff)
-  ) %>%
+  summarize(speed.diff = sum(speed.diff),
+            direction.diff = sum(direction.diff)) %>%
   rename(ball = object) %>%
   mutate(ball = factor(ball, levels = c("ballA", "ballB"), labels = c("A", "B"))) %>%
   left_join(expand.grid(clip = 1:32, ball = c("A", "B")), .,
             by = c("clip", "ball")) %>%
-  mutate_at(.vars = vars(speed.diff, direction.diff), .funs = ~ ifelse(is.na(.), 0, .)) %>%
+  mutate_at(.vars = vars(speed.diff, direction.diff),
+            .funs = ~ ifelse(is.na(.), 0, .)) %>%
   arrange(clip, ball) %>%
-  rename(
-    total.speed.diff = speed.diff,
-    total.direction.diff = direction.diff
-  )
+  rename(total.speed.diff = speed.diff,
+         total.direction.diff = direction.diff)
 
 # transfer of force 
 tmp.transfer = df.features.collisions %>%
-  filter(
-    str_detect(ball, "ballA|ballB"),
-    str_detect(object, "ball")
-  ) %>%
-  mutate(
-    AE = ifelse(ball == "ballA" & object == "ballE", 1, NA),
-    BE = ifelse(ball == "ballB" & object == "ballE", 1, NA),
-    AB = ifelse((ball == "ballA" & object == "ballB"), 1, NA)
-  ) %>%
+  filter(str_detect(ball, "ballA|ballB"),
+         str_detect(object, "ball")) %>%
+  mutate(AE = ifelse(ball == "ballA" & object == "ballE", 1, NA),
+         BE = ifelse(ball == "ballB" & object == "ballE", 1, NA),
+         AB = ifelse((ball == "ballA" & object == "ballB"), 1, NA)) %>%
   mutate_at(.vars = vars(AE, BE, AB), .funs = ~ . * time) %>%
   filter(!is.na(AE) | !is.na(BE) | !is.na(AB)) %>%
   arrange(clip, time) %>%
   group_by(clip) %>%
-  summarise(
-    A = any(!is.na(AE)),
-    B = any(!is.na(BE)),
-    A = ifelse(any(!is.na(AB)) & any(!is.na(BE)) & max(AB, na.rm = T) < min(BE, na.rm = T), T, A),
-    B = ifelse(any(!is.na(AB)) & any(!is.na(AE)) & max(AB, na.rm = T) < min(AE, na.rm = T), T, B)
-  ) %>%
-  gather(ball, transfer, -clip) %>%
+  summarize(A = any(!is.na(AE)),
+            B = any(!is.na(BE)),
+            A = ifelse(any(!is.na(AB)) & any(!is.na(BE)) & max(AB, na.rm = T) < min(BE, na.rm = T),
+                       T,
+                       A),
+            B = ifelse(any(!is.na(AB)) & any(!is.na(AE)) & max(AB, na.rm = T) < min(AE, na.rm = T),
+                       T,
+                       B)) %>%
+  pivot_longer(cols = -clip,
+               names_to = "ball",
+               values_to = "transfer") %>% 
   arrange(clip, ball)
 
 # collect features
 df.features = df.features.initial %>%
   filter(ball != "E") %>%
   mutate(ball = factor(ball)) %>%
-  mutate(
-    moving = ifelse(velx == 0 & vely == 0, 0, 1),
-    speed = abs(velx) + abs(vely)
-  ) %>%
+  mutate(moving = ifelse(velx == 0 & vely == 0, 0, 1),
+         speed = abs(velx) + abs(vely)) %>%
   left_join(tmp.contactE) %>%
   left_join(tmp.impactE) %>%
   left_join(tmp.impactTotal) %>%
@@ -1410,10 +1411,16 @@ df.plot = df.exp3.counterfactual.long %>%
             by = c("clip", "ball")) %>%
   left_join(df.exp3.clipinfo,
             by = "clip") %>% 
-  gather("model", "value", c(rating, prediction)) %>%
+  pivot_longer(cols = c(rating, prediction),
+               names_to = "model",
+               values_to = "value") %>% 
   mutate(colorindex = 1,
-         colorindex = ifelse(model == "rating" & ball == "A" & outcome_b == 1, 2, colorindex),
-         colorindex = ifelse(model == "rating" & ball == "B" & outcome_a == 1, 2, colorindex),
+         colorindex = ifelse(model == "rating" & ball == "A" & outcome_b == 1,
+                             2,
+                             colorindex),
+         colorindex = ifelse(model == "rating" & ball == "B" & outcome_a == 1,
+                             2,
+                             colorindex),
          colorindex = ifelse(model == "prediction", 3, colorindex),
          colorindex = as.factor(colorindex),
          model = factor(model, levels = c("rating", "prediction"))) %>%
@@ -1449,7 +1456,9 @@ df.exp3.counterfactual.means %>%
 df.exp3.counterfactual.means %>% 
   left_join(df.exp3.clipinfo %>% 
               select(clip, outcome_a, outcome_b) %>% 
-              gather("ball", "outcome", -clip) %>% 
+              pivot_longer(cols = -clip,
+                           names_to = "ball",
+                           values_to = "outcome") %>% 
               mutate(ball = factor(ball,
                                    levels = c("outcome_a", "outcome_b"),
                                    labels = c("B", "A"))),
@@ -1479,14 +1488,16 @@ fit.brm_exp3_causal_w = brm(formula = rating ~ 1 + whether + (1 + whether | part
                                   seed = 1,
                                   file = "cache/brm_exp3_causal_w")
 
-fit.brm_exp3_causal_wh = brm(formula = rating ~ 1 + whether + how + (1 + whether + how | participant),
+fit.brm_exp3_causal_wh = brm(formula = rating ~ 1 + whether + how +
+                               (1 + whether + how | participant),
                                    data = df.data,
                                    save_all_pars = T,
                                    cores = 2,
                                    seed = 1,
                                    file = "cache/brm_exp3_causal_wh")
 
-fit.brm_exp3_causal_whs = brm(formula = rating ~ 1 + whether + how + sufficient + (1 + whether + how + sufficient | participant),
+fit.brm_exp3_causal_whs = brm(formula = rating ~ 1 + whether + how + sufficient +
+                                (1 + whether + how + sufficient | participant),
                                     data = df.data,
                                     save_all_pars = T,
                                     cores = 2,
@@ -1494,21 +1505,25 @@ fit.brm_exp3_causal_whs = brm(formula = rating ~ 1 + whether + how + sufficient 
                                     file = "cache/brm_exp3_causal_whs")
 
 # using whether-causation based on participants' counterfactual judgments
-fit.brm_exp3_causal_w_empirical = brm(formula = rating ~ 1 + whether_empirical + (1 + whether_empirical | participant),
+fit.brm_exp3_causal_w_empirical = brm(formula = rating ~ 1 + whether_empirical +
+                                        (1 + whether_empirical | participant),
                                   data = df.data,
                                   save_all_pars = T,
                                   cores = 2,
                                   seed = 1,
                                   file = "cache/brm_exp3_causal_w_empirical")
 
-fit.brm_exp3_causal_wh_empirical = brm(formula = rating ~ 1 + whether_empirical + how + (1 + whether_empirical + how | participant),
+fit.brm_exp3_causal_wh_empirical = brm(formula = rating ~ 1 + whether_empirical + how +
+                                         (1 + whether_empirical + how | participant),
                                    data = df.data,
                                    save_all_pars = T,
                                    cores = 2,
                                    seed = 1,
                                    file = "cache/brm_exp3_causal_wh_empirical")
 
-fit.brm_exp3_causal_whs_empirical = brm(formula = rating ~ 1 + whether_empirical + how + sufficient + (1 + whether_empirical + how + sufficient | participant),
+fit.brm_exp3_causal_whs_empirical = brm(formula = rating ~ 1 + whether_empirical + how +
+                                          sufficient + (1 + whether_empirical + how + 
+                                                          sufficient | participant),
                                     data = df.data,
                                     save_all_pars = T,
                                     cores = 2,
@@ -1589,7 +1604,8 @@ fit.brm_exp3_causal_heuristic = brm(formula = rating ~ moving +
                                       exclusive + (1 | participant),
                                     prior = priors,
                                     data = df.regression.features %>% 
-                                      select(-c(clip, ball, order, clipindex, contains("outcome"))),
+                                      select(-c(clip, ball, order, clipindex,
+                                                contains("outcome"))),
                                     save_all_pars = T,
                                     cores = 2,
                                     seed = 1,
@@ -1777,7 +1793,8 @@ model_prediction = list(fit.brm_exp3_causal_w,
             as_tibble()) %>% 
   mutate(ball = rep(c("A", "B"), n()/2),
          clip = rep(rep(1:32, each = 2), 6),
-         model = rep(c("w", "wh", "whs", "w_empirical", "wh_empirical", "whs_empirical"), each = 64))
+         model = rep(c("w", "wh", "whs", "w_empirical", "wh_empirical", "whs_empirical"),
+                     each = 64))
 
 df.plot = df.exp3.causal.long %>%
   left_join(df.exp3.clipinfo %>% 
@@ -1789,7 +1806,9 @@ df.plot = df.exp3.causal.long %>%
                      clip,
                      ball),
             by = c("clip", "ball")) %>% 
-  gather("model","value",c(rating, model)) %>%
+  pivot_longer(cols = c(rating, model),
+               names_to = "model",
+               values_to = "value") %>% 
     mutate(colorindex = 1,
     colorindex = ifelse(model == "rating" & outcome_both == 0, 1, colorindex),
     colorindex = ifelse(model == "rating" & outcome_both == 1, 2, colorindex),
@@ -1836,13 +1855,15 @@ x_labels = c(str_c("\nW ", cross, "\nH ", check, "\nS ", cross),
 df.plot = df.exp3.causal.long %>%
   filter(clip %in% c(3, 7, 15, 16, 23)) %>%
   group_by(clip, ball) %>%
-  summarise(mean = mean(rating),
+  summarize(mean = mean(rating),
             low = smean.cl.boot(rating)[2],
             high = smean.cl.boot(rating)[3]) %>%
   left_join(df.exp3.causal.regression %>% select(clip, ball, w, wh, whs),
             by = c("clip", "ball")) %>%
   ungroup() %>%
-  gather("index", "value", c(mean, w, wh, whs)) %>%
+  pivot_longer(cols = c(mean, w, wh, whs),
+               names_to = "index",
+               values_to = "value") %>% 
   mutate_at(.vars = vars(low, high), .funs = ~ ifelse(index == "mean", ., NA)) %>%
   mutate(index = factor(index, levels = c("mean", "w", "wh", "whs")),
          clip = factor(clip, levels = c(7, 23, 3, 15, 16),
@@ -1991,8 +2012,12 @@ ggplot(data = df.plot,
        y = "responsibility judgment") +
   annotate(geom = "text",
            label = str_c(
-             "r = ", cor(df.plot$estimate, df.plot$rating_mean) %>% round(2) %>% as.character() %>% str_sub(start = 2),
-             "\nRMSE = ", rmse(df.plot$estimate, df.plot$rating_mean) %>% round(2)),
+             "r = ", cor(df.plot$estimate, df.plot$rating_mean) %>% 
+               round(2) %>% 
+               as.character() %>% 
+               str_sub(start = 2),
+             "\nRMSE = ", rmse(df.plot$estimate, df.plot$rating_mean) %>% 
+               round(2)),
            x = 5,
            y = 95,
            size = 6,
@@ -2041,7 +2066,8 @@ df.cluster = df.exp3.causal.individual_fit %>%
          !str_detect(term, "Intercept")) %>%
   mutate(term = str_remove(term, "b_")) %>%
   select(participant, term, estimate) %>%
-  spread(term, estimate) %>%
+  pivot_wider(names_from = term,
+              values_from = estimate) %>% 
   mutate(group = ifelse(how > whether, "how", "whether"))
 
 df.plot = df.plot %>% 
@@ -2186,7 +2212,8 @@ df.plot = df.exp3.causal.individual_fit %>%
          !str_detect(term, "Intercept")) %>% 
   mutate(term = str_remove(term, "b_")) %>% 
   select(participant, term, estimate) %>% 
-  spread(term, estimate) %>% 
+  pivot_wider(names_from = term,
+              values_from = estimate) %>% 
   mutate_at(vars(how:whether), .funs = list(norm = ~ . / (how + whether + sufficient))) %>% 
   mutate(color = 0,
          color = ifelse(how_norm == max(how_norm), 1, color),
@@ -2223,21 +2250,19 @@ ggplot(data = df.plot,
 ```{r}
 df.exp3.model %>% 
   filter(noise == unique(df.exp3.model.counterfactual$noise)) %>%
-  gather("index", "value", A_difference:B_robust) %>% 
-  separate(index, into = c("ball", "aspect")) %>% 
-  spread(aspect, value) %>% 
-  select(difference, 
-         whether, 
-         how,
-         sufficient,
-         robust) %>% 
+  pivot_longer(cols = A_difference:B_robust,
+               names_to = c("ball", "aspect"),
+               names_sep = "_",
+               values_to = "value") %>% 
+  pivot_wider(names_from = aspect,
+              values_from = value) %>% 
+  select(difference, whether, how, sufficient, robust) %>% 
   correlate() %>% 
   shave() %>% 
   fashion() %>% 
   xtable() %>% 
   print(include.rownames = F,
         booktabs = T)
-
 ```
 
 #### Population level predictors in the mixed effects models 
@@ -2285,10 +2310,14 @@ df.table = df.exp3.model.causal %>%
   left_join(df.exp3.causal.regression,
             by = c("clip", "ball")) %>% 
   filter(clip %in% c(7, 23, 16, 3, 15)) %>%
-  mutate_at(.vars = vars(difference, robust, sufficient, whether, heuristic), .funs = ~ round(., 2)) %>%
+  mutate_at(.vars = vars(difference, robust, sufficient, whether, heuristic),
+            .funs = ~ round(., 2)) %>%
   select(clip, ball, difference, whether, how, sufficient, robust) %>%
   mutate(clip = factor(clip, levels = c(7, 23, 16, 3, 15))) %>%
-  mutate_at(.vars = vars(difference, whether, how, sufficient, robust), .funs = ~ ifelse(. < 0.5, paste0("xmark (", ., ")"), paste0("cmark (", ., ")"))) %>%
+  mutate_at(.vars = vars(difference, whether, how, sufficient, robust),
+            .funs = ~ ifelse(. < 0.5,
+                             str_c("xmark (", ., ")"),
+                             str_c("cmark (", ., ")"))) %>%
   arrange(clip)
 
 xtable(df.table) %>%
@@ -2307,7 +2336,8 @@ df.table = df.exp3.causal.regression %>%
   mutate_at(.vars = vars(difference, whether, how, sufficient, robust),
             .funs = ~ . * 100) %>% 
   mutate_at(.vars = vars(-ball), .funs = ~ round(., 0)) %>%
-  select(clip, ball, contains("outcome"), difference, whether, how, sufficient, robust, w, wh, whs, heuristic, rating = rating_mean)
+  select(clip, ball, contains("outcome"), difference, whether, how, sufficient, robust,
+         w, wh, whs, heuristic, rating = rating_mean)
 
 xtable(df.table, digits = 0) %>%
   print(include.rownames = FALSE)
