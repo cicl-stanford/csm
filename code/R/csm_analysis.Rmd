@@ -30,12 +30,12 @@ library("corrr")     # for tidy correlation matrix
 library("xtable")    # for latex tables
 library("jsonlite")  # for reading json files
 library("janitor")   # cleans stuff
-# library("ggtern")    # for ternary plots
 library("Hmisc")     # bootstrapped confidence intervals
 library("tidybayes") # for Bayesian data analysis
 library("png")       # adding pngs to images
 library("grid")      # functions for dealing with images 
 library("egg")       # for geom_custom
+library("patchwork") # for figure panels
 library("tidyverse") # for wrangling, plotting, etc. 
 ```
 
@@ -285,15 +285,15 @@ df.exp1.counterfactual.means = df.exp1.counterfactual.long %>%
   ungroup() %>%
   left_join(df.exp1.clipinfo, by = "clip")
 
-# find noisy simulation model that correlates best with the mean counterfactual judgments
+# find noisy simulation model that best predicts the mean counterfactual judgments by 
+# minimizing the sum of squared errors 
 df.exp1.counterfactual.model = df.exp1.model %>% 
   group_by(noise) %>% 
   nest() %>% 
-  mutate(correlation = map(data, ~ cor(.x$prediction,
-                                       df.exp1.counterfactual.means$rating_mean)),
-         correlation = unlist(correlation)) %>% 
+  mutate(sse = map(data, ~ sum((.x$prediction*100 - df.exp1.counterfactual.means$rating_mean) ^ 2)),
+         sse = unlist(sse)) %>% 
   ungroup() %>% 
-  filter(correlation == max(correlation)) %>% 
+  filter(sse == min(sse)) %>% 
   unnest(data) %>% 
   mutate(prediction = prediction * 100)
 ```
@@ -306,7 +306,7 @@ df.exp1.causal.model = df.exp1.counterfactual.long %>%
   summarize(empirical = mean(rating)) %>% 
   ungroup() %>% 
   left_join(df.exp1.counterfactual.model %>% 
-              select(-c(noise, correlation)),
+              select(-c(noise, sse)),
             by = "clip") %>% 
   rename(simulation = prediction) %>% 
   mutate(empirical = ifelse(outcome_actual == 1, 100 - empirical, empirical),
@@ -318,6 +318,7 @@ df.exp1.causal.model = df.exp1.counterfactual.long %>%
 ### Plots
 
 ```{r}
+set.seed(1)
 df.plot = df.exp1.counterfactual.long %>% 
   mutate(rating = abs(rating),
          clipindex = rep(c(1, 2), nrow(.)/2)) %>% 
@@ -353,9 +354,9 @@ df.text = df.plot %>%
          colorindex = NA)
 
 actual_counterfactual_plot(x = df.plot, ylabel = "counterfactual judgment")
-# ggsave("../../figures/plots/exp1_counterfactual_bars.pdf",
-#        width = 8,
-#        height = 6)
+ggsave("../../figures/plots/exp1_counterfactual_bars.pdf",
+       width = 8,
+       height = 6)
 ```
 
 ### Stats
@@ -370,7 +371,8 @@ df.exp1.counterfactual.means %>%
                    "outcome_counterfactual",
                    "index_actual",
                    "index_counterfactual")) %>% 
-  summarize(simulation_r = cor(rating_mean, prediction),
+  summarize(noise = unique(noise), 
+            simulation_r = cor(rating_mean, prediction),
             simulation_rmse = rmse(rating_mean, prediction)) %>% 
   mutate_all(~ round(., 2))
 ```
@@ -380,14 +382,14 @@ df.exp1.counterfactual.means %>%
 ### Plots 
 
 ```{r}
+set.seed(1)
+
 model.name = c("empirical")
 # model.name = c("simulation")
 
 df.plot = df.exp1.causal.long %>%
-  mutate(
-    rating = abs(rating),
-    clipindex = rep(c(1, 2), nrow(.) / 2)
-  ) %>%
+  mutate(rating = abs(rating),
+         clipindex = rep(c(1, 2), nrow(.) / 2)) %>%
   left_join(df.exp1.causal.model,
             by = c("clip",
                    "outcome_actual",
@@ -408,28 +410,23 @@ df.plot = df.exp1.causal.long %>%
     index.counterfactual = factor(index_counterfactual, 
                                   levels = c("counterfactual miss", 
                                              "counterfactual close", 
-                                             "counterfactual hit"))
-  ) %>%
-  mutate(
-    clipindex = ifelse(clip == 11, 2, clipindex),
-    clipindex = ifelse(clip == 12, 1, clipindex)
-  ) # swap clips 11 and 12
+                                             "counterfactual hit"))) %>%
+  mutate(clipindex = ifelse(clip == 11, 2, clipindex),
+         clipindex = ifelse(clip == 12, 1, clipindex)) # swap clips 11 and 12
 
 df.text = df.plot %>%
   expand(index_actual, index_counterfactual, clipindex, model) %>%
-  mutate(
-    label = rep(1:18, each = 2),
-    label = ifelse(model != "rating", NA, label),
-    y = -15,
-    x = clipindex,
-    colorindex = NA
-  )
+  mutate(label = rep(1:18, each = 2),
+         label = ifelse(model != "rating", NA, label),
+         y = -15,
+         x = clipindex,
+         colorindex = NA)
 
 actual_counterfactual_plot(df.plot, "causal judgment")
 
-# ggsave("../../figures/plots/exp1_causal_bars.pdf",
-#        width = 8,
-#        height = 6)
+ggsave("../../figures/plots/exp1_causal_bars.pdf",
+       width = 8,
+       height = 6)
 ```
 
 ### Stats
@@ -500,6 +497,7 @@ func_posterior_difference = function(data, clip1, clip2){
 func_posterior_difference(data = df.exp1.causal.posterior,
                           clip1 = "8",
                           clip2 = "13")
+
 ```
 
 
@@ -654,15 +652,15 @@ df.exp2.counterfactual.means = df.exp2.combined.long %>%
   ungroup() %>%
   left_join(df.exp2.clipinfo, by = "clip")
 
-# find noisy simulation model that correlates best with the mean counterfactual judgments
+# find noisy simulation model that best predicts the mean counterfactual judgments by 
+# minimizing the sum of squared errors 
 df.exp2.counterfactual.model = df.exp2.model %>% 
   group_by(noise) %>% 
   nest() %>% 
-  mutate(correlation = map(data, ~ cor(.x$prediction,
-                                       df.exp2.counterfactual.means$rating)),
-         correlation = unlist(correlation)) %>% 
+  mutate(sse = map(data, ~ sum((.x$prediction*100 - df.exp2.counterfactual.means$rating) ^ 2)),
+         sse = unlist(sse)) %>% 
   ungroup() %>% 
-  filter(correlation == max(correlation)) %>% 
+  filter(sse == min(sse)) %>% 
   unnest(data) %>% 
   mutate(prediction = prediction * 100)
 
@@ -686,19 +684,20 @@ df.exp2.causal.model = df.exp2.combined.long %>%
             by = "clip") %>% 
   left_join(df.exp2.counterfactual.model,
             by = "clip") %>% 
-  select(-c(correlation, noise)) %>% 
+  select(-c(sse, noise)) %>% 
   rename(simulation = prediction) %>% 
   mutate_at(.vars = vars(simulation, causal_first, counterfactual_first, combined),
             .funs = list(~ ifelse(outcome_actual == 1, 100 - ., .)))
 
 ```
 
-
 ## Counterfactual condition 
 
 ### Plots
 
-```{r, warning=F}
+```{r fig.height=6, fig.width=8, warning=FALSE}
+set.seed(1)
+
 df.plot = df.exp2.combined.long %>%
   filter(question == "counterfactual",
          clip <= 18) %>%
@@ -755,7 +754,8 @@ df.exp2.counterfactual.means %>%
                    "outcome_counterfactual",
                    "index_actual",
                    "index_counterfactual")) %>% 
-  summarize(simulation_r = cor(rating, prediction),
+  summarize(noise = unique(noise),
+            simulation_r = cor(rating, prediction),
             simulation_rmse = rmse(rating, prediction)) %>% 
   mutate_all(~ round(., 2))
 ```
@@ -776,6 +776,7 @@ fit.brm_exp2_counterfactual = brm(formula = rating ~ 1 + condition *
                                   seed = 1,
                                   file = "cache/brm_exp2_counterfactual")
 ```
+
 ### Tables
 
 ```{r}
@@ -798,6 +799,8 @@ fit.brm_exp2_counterfactual %>%
 ### Plots 
 
 ```{r}
+set.seed(1)
+
 # which causal condition? 
 # condition.name = c("causal_first")
 condition.name = c("counterfactual_first")
@@ -810,15 +813,10 @@ condition.name = c("counterfactual_first")
 model.name = c("combined")
 
 df.plot = df.exp2.combined.long %>%
-  filter(
-    question == "causal",
-    clip <= 18
-  ) %>%
+  filter(question == "causal", clip <= 18) %>%
   filter(condition %in% condition.name) %>%
-  mutate(
-    rating = abs(rating),
-    clipindex = rep(c(1, 2), nrow(.) / 2)
-  ) %>%
+  mutate(rating = abs(rating),
+         clipindex = rep(c(1, 2), nrow(.) / 2)) %>%
   left_join(df.exp2.causal.model,
             by = c("clip", 
                    "outcome_actual", 
@@ -829,32 +827,27 @@ df.plot = df.exp2.combined.long %>%
                names_to = "model",
                values_to = "value") %>% 
   mutate(model = factor(model, levels = c("rating", model.name))) %>%
-  mutate(
-    colorindex = ifelse(outcome_actual == 1, 2, 1),
-    colorindex = ifelse(model != "rating", 3, colorindex),
-    colorindex = as.factor(colorindex),
-    index_actual = factor(index_actual, 
-                          levels = c("actual miss", 
-                                     "actual close", 
-                                     "actual hit")),
-    index_counterfactual = factor(index_counterfactual, 
-                                  levels = c("counterfactual miss", 
-                                             "counterfactual close", 
-                                             "counterfactual hit")))
+  mutate(colorindex = ifelse(outcome_actual == 1, 2, 1),
+         colorindex = ifelse(model != "rating", 3, colorindex),
+         colorindex = as.factor(colorindex),
+         index_actual = factor(index_actual, 
+                               levels = c("actual miss", 
+                                          "actual close", 
+                                          "actual hit")),
+         index_counterfactual = factor(index_counterfactual, 
+                                       levels = c("counterfactual miss", 
+                                                  "counterfactual close", 
+                                                  "counterfactual hit")))
 
 df.text = df.plot %>%
   expand(index_actual, index_counterfactual, clipindex, model) %>%
-  mutate(
-    label = rep(c(
-      "1 (A)", "2 (B)", "3", "4", "5 (A)", "6 (B)",
-      "7", "8 (C)", "9", "10", "11", "12 (C)",
-      "13 (D)", "14 (E)", "15", "16", "17 (D)", "18 (E)"
-    ), each = 2),
-    label = ifelse(model != "rating", NA, label),
-    y = -15,
-    x = clipindex,
-    colorindex = NA
-  )
+  mutate(label = rep(c("1 (A)", "2 (B)", "3", "4", "5 (A)", "6 (B)",
+                       "7", "8 (C)", "9", "10", "11", "12 (C)",
+                       "13 (D)", "14 (E)", "15", "16", "17 (D)", "18 (E)"), each = 2),
+         label = ifelse(model != "rating", NA, label),
+         y = -15,
+         x = clipindex,
+         colorindex = NA)
 
 actual_counterfactual_plot(df.plot, "causal judgment")
 
@@ -1110,8 +1103,10 @@ df.exp3.counterfactual.means = df.exp3.counterfactual.long %>%
             rating_high = smean.cl.boot(rating)[3]) %>% 
   ungroup()
 
-# find noisy simulation model that correlates best with the mean counterfactual judgments
+# find noisy simulation model that best predicts the mean counterfactual judgments by 
+# minimizing the sum of squared errors 
 df.exp3.model.counterfactual = df.exp3.model %>% 
+  group_by(noise) %>% 
   select(clip, contains("whether"), noise) %>% 
   pivot_longer(cols = c(A_whether, B_whether),
                names_to = "ball",
@@ -1122,11 +1117,10 @@ df.exp3.model.counterfactual = df.exp3.model %>%
   mutate(prediction = ifelse(outcome_both == 1, 1 - prediction, prediction)) %>% 
   group_by(noise) %>% 
   nest() %>% 
-  mutate(correlation = map(data, ~ cor(.x$prediction,
-                                       df.exp3.counterfactual.means$rating_mean)),
-         correlation = unlist(correlation)) %>% 
+  mutate(sse = map(data, ~ sum((.x$prediction*100 - df.exp3.counterfactual.means$rating_mean) ^ 2)),
+         sse = unlist(sse)) %>% 
   ungroup() %>% 
-  filter(correlation == max(correlation)) %>% 
+  filter(sse == min(sse)) %>% 
   unnest(data) %>% 
   mutate(prediction = prediction * 100)
 ```
@@ -1373,7 +1367,6 @@ df.features = df.features.initial %>%
 rm(list = ls()[str_detect(ls(), "tmp")])
 ```
 
-
 ## Counterfactual condition 
 
 ### Plots
@@ -1381,6 +1374,8 @@ rm(list = ls()[str_detect(ls(), "tmp")])
 #### Bar graph
 
 ```{r fig.height=6, fig.width=12, warning=FALSE}
+set.seed(1)
+
 df.plot = df.exp3.counterfactual.long %>%
   left_join(df.exp3.model.counterfactual %>%
               select(clip, ball, prediction) %>%
@@ -1709,6 +1704,7 @@ df.exp3.causal.individual_fit %>%
 #### Bar graph
 
 ```{r fig.height=6, fig.width=12, warning=FALSE}
+set.seed(1)
 model_index = "whs"
 
 # model predictions 
@@ -1886,75 +1882,87 @@ p = ggplot(data = df.plot,
 
 #### Scatter plot
 
-```{r fig.height=5, fig.width=5}
-model = "w"
-model = "wh"
-model = "whs"
-# model = "heuristic"
-
-if(model == "heuristic"){
-  xlabel = "Heuristic"
-}else{
-  xlabel = bquote(CSM[.(toupper(model))])
+```{r fig.height=10, fig.width=10}
+func_scatterplot = function(model){
+  if(model == "heuristic"){
+    xlabel = "Heuristic"
+  }else{
+    xlabel = bquote(CSM[.(toupper(model))])
+  }
+  
+  l.models = list(w = fit.brm_exp3_causal_w, 
+                  wh = fit.brm_exp3_causal_wh,
+                  whs = fit.brm_exp3_causal_whs,
+                  heuristic = fit.brm_exp3_causal_heuristic)
+  
+  df.data = df.exp3.causal.means %>% 
+    left_join(df.exp3.model.causal, by = c("clip", "ball")) %>% 
+    left_join(df.regression.features, by = c("clip", "ball"))
+  
+  df.plot = l.models[[model]] %>%
+    fitted(newdata = df.data,
+           re_formula = NA) %>% 
+    as_tibble() %>% 
+    clean_names() %>%
+    bind_cols(df.data)
+  
+  p = ggplot(data = df.plot,
+             mapping = aes(x = estimate, 
+                           y = rating_mean)) +
+    geom_abline(intercept = 0,
+                slope = 1,
+                linetype = 2) + 
+    geom_smooth(aes(y = estimate,
+                    ymin = q2_5,
+                    ymax = q97_5),
+                stat = "identity",
+                color = "black") +
+    geom_linerange(size = 0.75, 
+                   mapping = aes(ymin = rating_low,
+                                 ymax = rating_high),
+                   color = "gray50") +
+    geom_point(size = 2) + 
+    scale_color_manual(values = c("black", "#e41a1c"),
+                       guide = F) +
+    coord_fixed(xlim = c(0, 100),
+                ylim = c(0, 100)) +
+    labs(x = xlabel,
+         y = "responsibility judgment") +
+    annotate(geom = "text",
+             label = str_c(
+               "r = ", cor(df.plot$estimate, df.plot$rating_mean) %>% 
+                 round(2) %>% 
+                 as.character() %>% 
+                 str_sub(start = 2),
+               "\nRMSE = ", rmse(df.plot$estimate, df.plot$rating_mean) %>% 
+                 round(2)),
+             x = 5,
+             y = 95,
+             size = 6,
+             hjust = 0) +
+    scale_x_continuous(breaks = seq(0, 100, 25)) +
+    scale_y_continuous(breaks = seq(0, 100, 25)) +
+    theme(text = element_text(size = 20))
+  return(p)
 }
 
-l.models = list(w = fit.brm_exp3_causal_w, 
-                wh = fit.brm_exp3_causal_wh,
-                whs = fit.brm_exp3_causal_whs,
-                heuristic = fit.brm_exp3_causal_heuristic)
+# for creating and saving an individual scatter plot 
+# model = "w"
+# model = "wh"
+# model = "whs"
+# model = "heuristic"
 
-df.data = df.exp3.causal.means %>% 
-  left_join(df.exp3.model.causal, by = c("clip", "ball")) %>% 
-  left_join(df.regression.features, by = c("clip", "ball"))
-
-df.plot = l.models[[model]] %>%
-  fitted(newdata = df.data,
-         re_formula = NA) %>% 
-  as_tibble() %>% 
-  clean_names() %>%
-  bind_cols(df.data)
-
-ggplot(data = df.plot,
-       mapping = aes(x = estimate, 
-                     y = rating_mean)) +
-  geom_abline(intercept = 0,
-              slope = 1,
-              linetype = 2) + 
-  geom_smooth(aes(y = estimate,
-                  ymin = q2_5,
-                  ymax = q97_5),
-              stat = "identity",
-              color = "black") +
-  geom_linerange(size = 0.75, 
-                 mapping = aes(ymin = rating_low,
-                               ymax = rating_high),
-                 color = "gray50") +
-  geom_point(size = 2) + 
-  scale_color_manual(values = c("black", "#e41a1c"),
-                     guide = F) +
-  coord_fixed(xlim = c(0, 100),
-              ylim = c(0, 100)) +
-  labs(x = xlabel,
-       y = "responsibility judgment") +
-  annotate(geom = "text",
-           label = str_c(
-             "r = ", cor(df.plot$estimate, df.plot$rating_mean) %>% 
-               round(2) %>% 
-               as.character() %>% 
-               str_sub(start = 2),
-             "\nRMSE = ", rmse(df.plot$estimate, df.plot$rating_mean) %>% 
-               round(2)),
-           x = 5,
-           y = 95,
-           size = 6,
-           hjust = 0) +
-  scale_x_continuous(breaks = seq(0, 100, 25)) +
-  scale_y_continuous(breaks = seq(0, 100, 25)) +
-  theme(text = element_text(size = 20))
-
+# func_scatterplot(model)
 # ggsave(str_c("../../figures/plots/exp3_", model, "_scatter.pdf"),
 #        width = 5,
 #        height = 5)
+
+list(func_scatterplot(model = "w"),
+     func_scatterplot(model = "wh"),
+     func_scatterplot(model = "whs"),
+     func_scatterplot(model = "heuristic")) %>%
+  wrap_plots(ncol = 2)
+
 ```
 
 #### Individual participant variance for a selection of clips (clustered)
@@ -2126,9 +2134,10 @@ p = ggplot(data = df.plot,
 
 #### Ternary plots for individual regression results 
 
-- doesn't work at the moment: `ggtern` is incompatible with recent `ggplot2` update
+- doesn't work at the moment: `ggtern` is incompatible with the most recent `ggplot2` update
 
 ```{r, eval=F}
+library("ggtern")
 df.plot = df.exp3.causal.individual_fit %>% 
   select(participant, fit_whs) %>% 
   mutate(estimates = map(fit_whs, tidy)) %>% 
