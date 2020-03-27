@@ -22,26 +22,41 @@ knitr::opts_chunk$set(
 ## Load packages 
 
 ```{r, message=F}
-library("knitr")     # for knitting stuff
-library("lme4")      # for linear mixed effects models
-library("broom")     # for tidying model results 
-library("brms")      # Bayesian regression with Stan
-library("corrr")     # for tidy correlation matrix
-library("xtable")    # for latex tables
-library("jsonlite")  # for reading json files
-library("janitor")   # cleans stuff
-library("Hmisc")     # bootstrapped confidence intervals
-library("tidybayes") # for Bayesian data analysis
-library("png")       # adding pngs to images
-library("grid")      # functions for dealing with images 
-library("egg")       # for geom_custom
-library("patchwork") # for figure panels
-library("tidyverse") # for wrangling, plotting, etc. 
+library("knitr")      # for knitting stuff
+library("kableExtra") # for markdown tables
+library("lme4")       # for linear mixed effects models
+library("broom")      # for tidying model results 
+library("brms")       # Bayesian regression with Stan
+library("corrr")      # for tidy correlation matrix
+library("xtable")     # for latex tables
+library("jsonlite")   # for reading json files
+library("janitor")    # cleans stuff
+library("Hmisc")      # bootstrapped confidence intervals
+library("tidybayes")  # for Bayesian data analysis
+library("png")        # adding pngs to images
+library("grid")       # functions for dealing with images 
+library("egg")        # for geom_custom
+library("patchwork")  # for figure panels
+library("tidyverse")  # for wrangling, plotting, etc. 
 ```
 
 ## Helper functions 
 
 ```{r}
+# function for printing out html or latex tables 
+print_table = function(data, format = "html", digits = 2){
+  if(format == "html"){
+    data %>% 
+      kable(digits = digits) %>% 
+      kable_styling()
+  }else if(format == "latex"){
+    data %>% 
+      xtable(digits = digits) %>%
+      print(include.rownames = F,
+            booktabs = T)
+  }
+}
+
 # root mean squared error
 rmse = function(x, y){
   return(sqrt(mean((x - y)^2)))
@@ -92,7 +107,7 @@ actual_counterfactual_plot = function(x, ylabel) {
           panel.grid = element_blank(),
           strip.background = element_blank(),
           panel.border = element_rect(colour = "black", fill = NA))
-  print(p)
+  # print(p)
 }
 
 actual_counterfactual_threeballs_plot = function(x, ylabel) {
@@ -144,7 +159,7 @@ actual_counterfactual_threeballs_plot = function(x, ylabel) {
           strip.background = element_blank(),
           strip.text = element_blank(),
           panel.border = element_rect(colour = "black", fill = NA))
-  print(p)
+  # print(p)
 }
 
 ```
@@ -158,7 +173,7 @@ theme_set(theme_classic())
 
 ## Clips 
 
-```{r exp1-diagrams, out.width="100%"}
+```{r exp1-diagrams, echo=F, out.width="100%"}
 include_graphics("../../figures/diagrams/exp1_diagrams.png")
 ```
 
@@ -199,7 +214,7 @@ df.exp1.clipinfo = tibble(clip = 1:18,
 
 # Structure data 
 df.exp1.causal.long = df.exp1.causal$data %>%
-  as_tibble() %>% 
+  enframe() %>% 
   mutate(participant = 1:n()) %>% 
   separate_rows(value, sep = ",") %>% 
   mutate(name = rep(c("clip", "rating"), n()/2),
@@ -212,7 +227,7 @@ df.exp1.causal.long = df.exp1.causal$data %>%
             by = "clip")
 
 df.exp1.counterfactual.long = df.exp1.counterfactual$data %>%
-  as_tibble() %>% 
+  enframe() %>% 
   mutate(participant = 1:n()) %>% 
   separate_rows(value, sep = ",") %>% 
   mutate(name = rep(c("clip", "rating"), n()/2),
@@ -241,7 +256,8 @@ df.exp1.counterfactual %>%
             age_sd = sd(age) %>% round(1),
             n_female = sum(gender == "female"),
             time_mean = mean(time) %>% round(2),
-            time_sd = sd(time) %>% round(2))
+            time_sd = sd(time) %>% round(2)) %>% 
+  print_table()
 
 # causal condition 
 df.exp1.causal %>% 
@@ -256,7 +272,8 @@ df.exp1.causal %>%
             age_sd = sd(age) %>% round(1),
             n_female = sum(gender == "female"),
             time_mean = mean(time) %>% round(2),
-            time_sd = sd(time) %>% round(2))
+            time_sd = sd(time) %>% round(2)) %>% 
+  print_table()
 ```
 
 ## Read in model predictions 
@@ -270,8 +287,7 @@ files = list.files(path = path, pattern = "*.csv")
 files = files[str_detect(files, "2ball")]
 
 df.exp1.model = files %>%
-  map(~ read.csv(str_c(path, .))) %>%
-  reduce(rbind) %>%
+  map_dfr(~ read.csv(str_c(path, .))) %>%
   set_names(c("clip", "noise", "prediction")) %>%
   left_join(df.exp1.clipinfo, by = "clip") %>%
   mutate(prediction = ifelse(outcome_actual == 1, 1 - prediction, prediction))
@@ -290,7 +306,9 @@ df.exp1.counterfactual.means = df.exp1.counterfactual.long %>%
 df.exp1.counterfactual.model = df.exp1.model %>% 
   group_by(noise) %>% 
   nest() %>% 
-  mutate(sse = map(data, ~ sum((.x$prediction*100 - df.exp1.counterfactual.means$rating_mean) ^ 2)),
+  mutate(sse = map(data, 
+                   ~ sum((.x$prediction*100 - 
+                            df.exp1.counterfactual.means$rating_mean) ^ 2)),
          sse = unlist(sse)) %>% 
   ungroup() %>% 
   filter(sse == min(sse)) %>% 
@@ -317,7 +335,7 @@ df.exp1.causal.model = df.exp1.counterfactual.long %>%
 
 ### Plots
 
-```{r}
+```{r fig.height=6, fig.width=8, warning=FALSE}
 set.seed(1)
 df.plot = df.exp1.counterfactual.long %>% 
   mutate(rating = abs(rating),
@@ -353,10 +371,12 @@ df.text = df.plot %>%
          x = clipindex,
          colorindex = NA)
 
-actual_counterfactual_plot(x = df.plot, ylabel = "counterfactual judgment")
-ggsave("../../figures/plots/exp1_counterfactual_bars.pdf",
-       width = 8,
-       height = 6)
+p = actual_counterfactual_plot(x = df.plot, ylabel = "counterfactual judgment")
+print(p)
+
+# ggsave("../../figures/plots/exp1_counterfactual_bars.pdf",
+#        width = 8,
+#        height = 6)
 ```
 
 ### Stats
@@ -374,14 +394,14 @@ df.exp1.counterfactual.means %>%
   summarize(noise = unique(noise), 
             simulation_r = cor(rating_mean, prediction),
             simulation_rmse = rmse(rating_mean, prediction)) %>% 
-  mutate_all(~ round(., 2))
+  print_table()
 ```
 
 ## Causal condition 
 
 ### Plots 
 
-```{r}
+```{r fig.height=6, fig.width=8, warning=FALSE}
 set.seed(1)
 
 model.name = c("empirical")
@@ -422,11 +442,12 @@ df.text = df.plot %>%
          x = clipindex,
          colorindex = NA)
 
-actual_counterfactual_plot(df.plot, "causal judgment")
+p = actual_counterfactual_plot(df.plot, "causal judgment")
+print(p)
 
-ggsave("../../figures/plots/exp1_causal_bars.pdf",
-       width = 8,
-       height = 6)
+# ggsave("../../figures/plots/exp1_causal_bars.pdf",
+#        width = 8,
+#        height = 6)
 ```
 
 ### Stats
@@ -453,7 +474,7 @@ df.exp1.causal.long %>%
             empirical_rmse = rmse(rating, empirical),
             simulation_r = cor(rating, simulation),
             simulation_rmse = rmse(rating, simulation)) %>% 
-  mutate_all(~ round(., 2))
+  print_table()
 ```
 
 #### Bayesian regression
@@ -512,9 +533,8 @@ fit.brm_exp1_causal %>%
   mutate_if(is.numeric, ~ round(., 2)) %>% 
   rename(`lower 95% HDI` = lower,
          `upper 95% HDI` = upper) %>% 
-  xtable() %>%
-  print(include.rownames = F,
-        booktabs = T)
+  # print_table(format = "latex")
+  print_table()
 ```
 
 
@@ -522,7 +542,7 @@ fit.brm_exp1_causal %>%
 
 ## Clips 
 
-```{r exp2-diagrams, out.width="100%"}
+```{r exp2-diagrams, echo=F, out.width="100%"}
 include_graphics("../../figures/diagrams/exp2_diagrams.png")
 ```
 
@@ -543,7 +563,9 @@ df.exp2.clipinfo = tibble(clip = 1:20,
                                              0, 1, 1, 1, 1, 1, 1, 1, 0, 1),
                           outcome_counterfactual = c(0, 0, 1, 0, 1, 1, 0, 0, 1, 0, 
                                                      1, 1, 0, 0, 1, 0, 1, 1, 1, 1),
-                          index_actual = c(rep(c("actual miss", "actual close", "actual hit"),
+                          index_actual = c(rep(c("actual miss", 
+                                                 "actual close",
+                                                 "actual hit"),
                                                each = 6),
                                            rep("practice", 2)),
                           index_counterfactual = c(rep(rep(c("counterfactual miss",
@@ -562,7 +584,7 @@ df.exp2.clipinfo = tibble(clip = 1:20,
 
 # Structure data 
 df.exp2.causal_first.long = df.exp2.causal_first$data %>% 
-  as_tibble() %>% 
+  enframe() %>% 
   mutate(participant = 1:n()) %>% 
   separate_rows(value, sep = ",") %>% 
   mutate(name = rep(c("clip", "rating"), n()/2),
@@ -578,7 +600,7 @@ df.exp2.causal_first.long = df.exp2.causal_first$data %>%
   select(participant, question, clip, rating, everything())
 
 df.exp2.counterfactual_first.long = df.exp2.counterfactual_first$data %>% 
-  as_tibble() %>% 
+  enframe() %>% 
   mutate(participant = 1:n()) %>% 
   separate_rows(value, sep = ",") %>% 
   mutate(name = rep(c("clip", "rating"), n()/2),
@@ -622,7 +644,8 @@ df.exp2.counterfactual_first %>%
             age_sd = sd(age) %>% round(1),
             n_female = sum(gender == "female"),
             time_mean = mean(time) %>% round(2),
-            time_sd = sd(time) %>% round(2))
+            time_sd = sd(time) %>% round(2)) %>% 
+  print_table()
 ```
 
 ## Read in model predictions 
@@ -636,8 +659,7 @@ files = list.files(path = path, pattern = "*.csv")
 files = files[str_detect(files, "teleport")]
 
 df.exp2.model = files %>%
-  map(~ read.csv(str_c(path, .))) %>% 
-  reduce(rbind) %>%
+  map_dfr(~ read.csv(str_c(path, .))) %>%
   set_names(c("clip", "noise", "prediction")) %>%
   left_join(df.exp2.clipinfo, by = "clip") %>%
   mutate(prediction = ifelse(outcome_actual == 1, 1 - prediction, prediction))
@@ -657,7 +679,8 @@ df.exp2.counterfactual.means = df.exp2.combined.long %>%
 df.exp2.counterfactual.model = df.exp2.model %>% 
   group_by(noise) %>% 
   nest() %>% 
-  mutate(sse = map(data, ~ sum((.x$prediction*100 - df.exp2.counterfactual.means$rating) ^ 2)),
+  mutate(sse = map(data, 
+                   ~ sum((.x$prediction*100 - df.exp2.counterfactual.means$rating) ^ 2)),
          sse = unlist(sse)) %>% 
   ungroup() %>% 
   filter(sse == min(sse)) %>% 
@@ -735,7 +758,8 @@ df.text = df.plot %>%
          x = clipindex,
          colorindex = NA)
 
-actual_counterfactual_plot(df.plot, "counterfactual judgment")
+p = actual_counterfactual_plot(df.plot, "counterfactual judgment")
+print(p)
 
 # ggsave("../../figures/plots/exp2_counterfactual_bars.pdf",
 #        width = 8,
@@ -757,7 +781,7 @@ df.exp2.counterfactual.means %>%
   summarize(noise = unique(noise),
             simulation_r = cor(rating, prediction),
             simulation_rmse = rmse(rating, prediction)) %>% 
-  mutate_all(~ round(., 2))
+  print_table()
 ```
 
 #### Bayesian regressions
@@ -768,7 +792,8 @@ df.exp2.counterfactual.means %>%
 # random intercepts & slopes model 
 fit.brm_exp2_counterfactual = brm(formula = rating ~ 1 + condition * 
                                     (index_actual + index_counterfactual) + 
-                                    (1 + index_actual + index_counterfactual | participant),
+                                    (1 + index_actual + 
+                                       index_counterfactual | participant),
                                   data = df.exp2.combined.long %>% 
                                     na.omit() %>% 
                                     filter(question == "counterfactual"),
@@ -788,9 +813,10 @@ fit.brm_exp2_counterfactual %>%
   mutate_if(is.numeric, ~ round(., 2)) %>% 
   rename(`lower 95% HDI` = lower,
          `upper 95% HDI` = upper) %>% 
-  xtable() %>%
-  print(include.rownames = F,
-        booktabs = T)
+  print_table()
+  # xtable() %>%
+  # print(include.rownames = F,
+  #       booktabs = T)
 ```
 
 
@@ -798,19 +824,10 @@ fit.brm_exp2_counterfactual %>%
 
 ### Plots 
 
-```{r}
+```{r fig.height=6, fig.width=16, fig.cap="Left panel: Counterfactual judgments first; right panel: Causal judgments first"}
 set.seed(1)
 
-# which causal condition? 
-# condition.name = c("causal_first")
-condition.name = c("counterfactual_first")
-# condition.name = c("causal_first", "counterfactual_first")
-
-# which model for the counterfactual simulations 
-# model.name = c("simulation")
-# model.name = c("causal_first")
-# model.name = c("counterfactual_first")
-model.name = c("combined")
+func_exp2_causal_plot = function(condition.name, model.name){
 
 df.plot = df.exp2.combined.long %>%
   filter(question == "causal", clip <= 18) %>%
@@ -823,7 +840,7 @@ df.plot = df.exp2.combined.long %>%
                    "outcome_counterfactual", 
                    "index_actual", 
                    "index_counterfactual")) %>%
-  pivot_longer(cols = c("rating", model.name),
+  pivot_longer(cols = c("rating", all_of(model.name)),
                names_to = "model",
                values_to = "value") %>% 
   mutate(model = factor(model, levels = c("rating", model.name))) %>%
@@ -850,7 +867,20 @@ df.text = df.plot %>%
          colorindex = NA)
 
 actual_counterfactual_plot(df.plot, "causal judgment")
+}
 
+plot.list = list(func_exp2_causal_plot(condition.name = "counterfactual_first",
+                                       model.name = "combined"),
+                 func_exp2_causal_plot(condition.name = "causal_first",
+                                       model.name = "combined"))
+
+# model.name = "combined"
+# condition.name = "counterfactual_first"
+# condition.name = "causal_first"
+# 
+# func_exp2_causal_plot(condition.name = condition.name,
+#                       model.name = model.name),
+# 
 # ggsave(str_c("../../figures/plots/exp2_", condition.name ,"_causal_bars.pdf"),
 #        width = 8,
 #        height = 6)
@@ -861,28 +891,37 @@ actual_counterfactual_plot(df.plot, "causal judgment")
 #### Model evaluation
 
 ```{r}
-df.exp2.combined.long %>% 
+df.data = df.exp2.combined.long %>%
   filter(question == "causal",
-         clip <= 18) %>% 
-  mutate(rating = abs(rating)) %>% 
-  group_by(clip,
-           outcome_actual, 
+         clip <= 18) %>%
+  mutate(rating = abs(rating)) %>%
+  group_by(condition,
+           clip,
+           outcome_actual,
            outcome_counterfactual,
            index_actual,
-           index_counterfactual) %>% 
-  summarize(rating = mean(rating)) %>% 
-  ungroup() %>% 
+           index_counterfactual) %>%
+  summarize(rating = mean(rating)) %>%
+  ungroup() %>%
   left_join(df.exp2.causal.model,
-            by = c("clip", 
-                   "outcome_actual", 
-                   "outcome_counterfactual", 
-                   "index_actual", 
-                   "index_counterfactual")) %>% 
+            by = c("clip",
+                   "outcome_actual",
+                   "outcome_counterfactual",
+                   "index_actual",
+                   "index_counterfactual"))
+
+df.data %>% 
+  group_by(condition) %>% 
+  summarize(empirical_r = cor(rating, combined),
+            empirical_rmse = rmse(rating, combined)) %>% 
+  print_table()
+
+df.data %>%
   summarize(empirical_r = cor(rating, combined),
             empirical_rmse = rmse(rating, combined),
             simulation_r = cor(rating, simulation),
-            simulation_rmse = rmse(rating, simulation)) %>% 
-  mutate_all(~ round(., 2))
+            simulation_rmse = rmse(rating, simulation)) %>%
+  print_table()
 ```
 
 #### Bayesian regression
@@ -949,16 +988,15 @@ fit.brm_exp2_causal %>%
   mutate_if(is.numeric, ~ round(., 2)) %>% 
   rename(`lower 95% HDI` = lower,
          `upper 95% HDI` = upper) %>% 
-  xtable() %>%
-  print(include.rownames = F,
-        booktabs = T)
+  # print_table(format = "latex")
+  print_table()
 ```
 
 # Experiment 3: 3 balls
 
 ## Clips 
 
-```{r exp3-diagrams, out.width="100%"}
+```{r exp3-diagrams, echo=F, out.width="100%"}
 include_graphics("../../figures/diagrams/exp3_diagrams.png")
 ```
 
@@ -984,7 +1022,7 @@ df.exp3.counterfactual = read.csv("../../data/experiment3_counterfactual.csv",
 
 # demographics
 df.exp3.counterfactual.demographics = df.exp3.counterfactual$extra %>% 
-  as_tibble() %>% 
+  enframe() %>% 
   separate_rows(value) %>% 
   mutate(value = as.numeric(value),
          name = rep(c("gender", "age", "difficulty", "smoothness", "time", "condition"),
@@ -998,7 +1036,7 @@ df.exp3.counterfactual.demographics = df.exp3.counterfactual$extra %>%
 
 # judgments
 df.exp3.counterfactual.long = df.exp3.counterfactual$data %>%
-  as_tibble() %>% 
+  enframe() %>% 
   separate_rows(value) %>% 
   mutate(value = as.numeric(value),
          name = rep(c("clip", "rating"), n()/2),
@@ -1019,7 +1057,7 @@ df.exp3.causal = read.csv("../../data/experiment3_causal.csv",
 
 # demographics 
 df.exp3.causal.demographics = df.exp3.causal$extra %>% 
-  as_tibble() %>% 
+  enframe() %>% 
   separate_rows(value) %>% 
   mutate(value = as.numeric(value),
          name = rep(c("gender", "age", "difficulty", "smoothness", "time", 
@@ -1034,7 +1072,7 @@ df.exp3.causal.demographics = df.exp3.causal$extra %>%
 
 # judgments
 df.exp3.causal.long = df.exp3.causal$data %>%
-  as_tibble() %>% 
+  enframe() %>% 
   separate_rows(value) %>% 
   mutate(value = as.numeric(value),
          name = rep(c("clip", "x", "y", "z", "rating1", "rating2"), n()/6),
@@ -1066,7 +1104,8 @@ df.exp3.counterfactual.demographics %>%
             age_sd = sd(age) %>% round(1),
             n_female = sum(gender == "female"),
             time_mean = mean(time) %>% round(2),
-            time_sd = sd(time) %>% round(2))
+            time_sd = sd(time) %>% round(2)) %>% 
+  print_table()
 
 # causal condition 
 df.exp3.causal.demographics %>% 
@@ -1075,7 +1114,8 @@ df.exp3.causal.demographics %>%
             age_sd = sd(age) %>% round(1),
             n_female = sum(gender == "female"),
             time_mean = mean(time) %>% round(2),
-            time_sd = sd(time) %>% round(2))
+            time_sd = sd(time) %>% round(2)) %>% 
+  print_table()
 ```
 
 
@@ -1117,7 +1157,9 @@ df.exp3.model.counterfactual = df.exp3.model %>%
   mutate(prediction = ifelse(outcome_both == 1, 1 - prediction, prediction)) %>% 
   group_by(noise) %>% 
   nest() %>% 
-  mutate(sse = map(data, ~ sum((.x$prediction*100 - df.exp3.counterfactual.means$rating_mean) ^ 2)),
+  mutate(sse = map(data,
+                   ~ sum((.x$prediction*100 -
+                            df.exp3.counterfactual.means$rating_mean) ^ 2)),
          sse = unlist(sse)) %>% 
   ungroup() %>% 
   filter(sse == min(sse)) %>% 
@@ -1295,7 +1337,8 @@ tmp.impactE = df.features.collisions %>%
   mutate(ball = factor(ball, levels = c("ballA", "ballB"), labels = c("A", "B"))) %>%
   left_join(expand.grid(clip = 1:32, ball = c("A", "B")), .,
             by = c("clip", "ball")) %>%
-  mutate_at(.vars = vars(speed.diff, direction.diff), .funs = ~ ifelse(is.na(.), 0, .)) %>%
+  mutate_at(.vars = vars(speed.diff, direction.diff),
+            .funs = ~ ifelse(is.na(.), 0, .)) %>%
   arrange(clip, ball) %>%
   rename(E.speed.diff = speed.diff,
          E.direction.diff = direction.diff)
@@ -1338,10 +1381,14 @@ tmp.transfer = df.features.collisions %>%
   group_by(clip) %>%
   summarize(A = any(!is.na(AE)),
             B = any(!is.na(BE)),
-            A = ifelse(any(!is.na(AB)) & any(!is.na(BE)) & max(AB, na.rm = T) < min(BE, na.rm = T),
+            A = ifelse(any(!is.na(AB)) &
+                         any(!is.na(BE)) &
+                         max(AB, na.rm = T) < min(BE, na.rm = T),
                        T,
                        A),
-            B = ifelse(any(!is.na(AB)) & any(!is.na(AE)) & max(AB, na.rm = T) < min(AE, na.rm = T),
+            B = ifelse(any(!is.na(AB)) &
+                         any(!is.na(AE)) &
+                         max(AB, na.rm = T) < min(AE, na.rm = T),
                        T,
                        B)) %>%
   pivot_longer(cols = -clip,
@@ -1405,7 +1452,8 @@ df.text = df.plot %>%
          x = 1.5,
          colorindex = NA)
 
-actual_counterfactual_threeballs_plot(df.plot, "counterfactual judgment")
+p = actual_counterfactual_threeballs_plot(df.plot, "counterfactual judgment")
+print(p)
 # ggsave("../../figures/plots/exp3_counterfactual_bars.pdf",
 #        width = 12,
 #        height = 6)
@@ -1415,14 +1463,14 @@ actual_counterfactual_threeballs_plot(df.plot, "counterfactual judgment")
 
 #### Model evaluation 
 
-```{r}
+```{r, warning=F}
 # best fitting model 
 df.exp3.counterfactual.means %>% 
   left_join(df.exp3.model.counterfactual,
             by = c("clip", "ball")) %>% 
   summarize(simulation_r = cor(rating_mean, prediction),
             simulation_rmse = rmse(rating_mean, prediction)) %>% 
-  mutate_all(~ round(., 2))
+  print_table()
 
 # deterministic model 
 df.exp3.counterfactual.means %>% 
@@ -1438,7 +1486,7 @@ df.exp3.counterfactual.means %>%
   mutate(outcome = outcome * 100) %>% 
   summarize(simulation_r = cor(rating_mean, outcome),
             simulation_rmse = rmse(rating_mean, outcome)) %>% 
-  mutate_all(~ round(., 2))
+  print_table()
 ```
 
 ## Causal condition 
@@ -1569,7 +1617,7 @@ prediction = "whs"
 df.exp3.causal.regression %>% 
   summarize(simulation_r = cor(rating_mean, .[[prediction]]),
             simulation_rmse = rmse(rating_mean, .[[prediction]])) %>% 
-  mutate_all(~ round(., 2))
+  print_table()
 ```
 
 #### Individual participant regressions 
@@ -1583,40 +1631,44 @@ df.fit = df.exp3.causal.long %>%
 priors = c(set_prior("normal(0,10)", class = "b", lb = 0))
 
 # initial model fits (used for compilation)
-fit.brm_exp3_causal_individual_baseline = brm(formula = rating ~ 1,
-                                              data = df.fit %>% 
-                                                filter(participant == 1),
-                                              save_all_pars = T,
-                                              cores = 2,
-                                              seed = 1,
-                                              file = str_c("cache/brm_exp3_causal_individual_baseline"))
+fit.brm_exp3_causal_individual_baseline = 
+  brm(formula = rating ~ 1,
+      data = df.fit %>% 
+        filter(participant == 1),
+      save_all_pars = T,
+      cores = 2,
+      seed = 1,
+      file = str_c("cache/brm_exp3_causal_individual_baseline"))
 
-fit.brm_exp3_causal_individual_w = brm(formula = rating ~ 1 + whether,
-                                       data = df.fit %>% 
-                                         filter(participant == 1),
-                                       prior = priors,
-                                       save_all_pars = T,
-                                       cores = 2,
-                                       seed = 1,
-                                       file = str_c("cache/brm_exp3_causal_individual_w"))
+fit.brm_exp3_causal_individual_w = 
+  brm(formula = rating ~ 1 + whether,
+      data = df.fit %>% 
+        filter(participant == 1),
+      prior = priors,
+      save_all_pars = T,
+      cores = 2,
+      seed = 1,
+      file = str_c("cache/brm_exp3_causal_individual_w"))
 
-fit.brm_exp3_causal_individual_wh = brm(formula = rating ~ 1 + whether + how,
-                                        data = df.fit %>% 
-                                          filter(participant == 1),
-                                        prior = priors,
-                                        save_all_pars = T,
-                                        cores = 2,
-                                        seed = 1,
-                                        file = str_c("cache/brm_exp3_causal_individual_wh"))
+fit.brm_exp3_causal_individual_wh = 
+  brm(formula = rating ~ 1 + whether + how,
+      data = df.fit %>% 
+        filter(participant == 1),
+      prior = priors,
+      save_all_pars = T,
+      cores = 2,
+      seed = 1,
+      file = str_c("cache/brm_exp3_causal_individual_wh"))
 
-fit.brm_exp3_causal_individual_whs = brm(formula = rating ~ 1 + whether + how + sufficient,
-                                         data = df.fit %>% 
-                                           filter(participant == 1),
-                                         prior = priors,
-                                         save_all_pars = T,
-                                         cores = 2,
-                                         seed = 1,
-                                         file = str_c("cache/brm_exp3_causal_individual_whs"))
+fit.brm_exp3_causal_individual_whs = 
+  brm(formula = rating ~ 1 + whether + how + sufficient,
+      data = df.fit %>% 
+        filter(participant == 1),
+      prior = priors,
+      save_all_pars = T,
+      cores = 2,
+      seed = 1,
+      file = str_c("cache/brm_exp3_causal_individual_whs"))
 
 # update model fits for different participants
 df.exp3.causal.individual_fit = df.fit %>%
@@ -1696,7 +1748,8 @@ load("data/exp3_causal_individual_fit.RData")
 
 # count how many participants are best fit by the different models
 df.exp3.causal.individual_fit %>% 
-  count(best_model)
+  count(best_model) %>% 
+  print_table()
 ```
 
 ### Plots 
@@ -1747,7 +1800,9 @@ df.text = df.plot %>%
          x = 1.5,
          colorindex = NA)
 
-actual_counterfactual_threeballs_plot(df.plot,"causal responsibility")
+p = actual_counterfactual_threeballs_plot(df.plot,"causal responsibility")
+print(p)
+
 # ggsave("../../figures/plots/exp3_causal_bars.pdf",
 #        width = 12,
 #        height = 6)
@@ -1872,6 +1927,7 @@ p = ggplot(data = df.plot,
         legend.background = element_rect(fill = "transparent"),
         legend.margin = margin(t = 5, unit = "cm"),
         plot.margin = margin(t = 8, l = 0.2, r = 0.2, b = 0.1, unit = "cm"))
+print(p)
 
 # ggsave("../../figures/plots/exp3_selection_bars.pdf",
 #        width = 20,
@@ -1883,6 +1939,7 @@ p = ggplot(data = df.plot,
 #### Scatter plot
 
 ```{r fig.height=10, fig.width=10}
+
 func_scatterplot = function(model){
   if(model == "heuristic"){
     xlabel = "Heuristic"
@@ -1967,7 +2024,7 @@ list(func_scatterplot(model = "w"),
 
 #### Individual participant variance for a selection of clips (clustered)
 
-```{r}
+```{r fig.height=8.5, fig.width=20}
 # \u2713 = check mark 
 # \u2717 = cross mark 
 
@@ -2125,6 +2182,8 @@ p = ggplot(data = df.plot,
         panel.spacing.x = unit(1, "cm"),
         plot.margin = margin(b = 5, l = 0.2, r = 0.2, t = 7.5, unit = "cm"))
 
+print(p)
+
 # ggsave(str_c("../../figures/plots/exp3_individual_variance_selection_lines_clustered.pdf"),
 #        plot = p,
 #        width = 20,
@@ -2149,7 +2208,8 @@ df.plot = df.exp3.causal.individual_fit %>%
   select(participant, term, estimate) %>% 
   pivot_wider(names_from = term,
               values_from = estimate) %>% 
-  mutate_at(vars(how:whether), .funs = list(norm = ~ . / (how + whether + sufficient))) %>% 
+  mutate_at(vars(how:whether),
+            .funs = list(norm = ~ . / (how + whether + sufficient))) %>% 
   mutate(color = 0,
          color = ifelse(how_norm == max(how_norm), 1, color),
          color = ifelse(whether_norm == max(whether_norm), 2, color),
@@ -2182,7 +2242,7 @@ ggplot(data = df.plot,
 
 #### Relationship between predictors 
 
-```{r}
+```{r, message=F}
 df.exp3.model %>% 
   filter(noise == unique(df.exp3.model.counterfactual$noise)) %>%
   pivot_longer(cols = A_difference:B_robust,
@@ -2195,9 +2255,8 @@ df.exp3.model %>%
   correlate() %>% 
   shave() %>% 
   fashion() %>% 
-  xtable() %>% 
-  print(include.rownames = F,
-        booktabs = T)
+  # print_table(format = "latex")
+  print_table()
 ```
 
 #### Population level predictors in the mixed effects models 
@@ -2221,9 +2280,8 @@ fit.brm_exp3_causal_w %>%
          `upper 95% HDI` = upper) %>% 
   mutate_if(is.numeric, ~ round(., 2)) %>% 
   select(model, everything()) %>% 
-  xtable() %>% 
-  print(include.rownames = F,
-        booktabs = T)
+  # print_table(format = "latex")
+  print_table()
 ```
 
 #### Individual participants regression results
@@ -2233,15 +2291,14 @@ df.exp3.causal.individual_fit %>%
   select_if(~ (is.numeric(.) | is.factor(.))) %>% 
   mutate_at(.vars = vars(contains("_w")), .funs = ~ round(., 2)) %>% 
   select(participant, everything(), best_model) %>% 
-  xtable() %>% 
-  print(include.rownames = F,
-        booktabs = T)
+  # print_table(format = "latex")
+  print_table()
 ```
 
 #### CSMwhs predictions for selection of cases 
 
 ```{r}
-df.table = df.exp3.model.causal %>%
+df.exp3.model.causal %>%
   left_join(df.exp3.causal.regression,
             by = c("clip", "ball")) %>% 
   filter(clip %in% c(7, 23, 16, 3, 15)) %>%
@@ -2253,16 +2310,15 @@ df.table = df.exp3.model.causal %>%
             .funs = ~ ifelse(. < 0.5,
                              str_c("xmark (", ., ")"),
                              str_c("cmark (", ., ")"))) %>%
-  arrange(clip)
-
-xtable(df.table) %>%
-  print(include.rownames = FALSE)
+  arrange(clip) %>% 
+  # print_table(format = "latex")
+  print_table()
 ```
 
 #### CSMwhs predictions for all cases 
 
 ```{r}
-df.table = df.exp3.causal.regression %>% 
+df.exp3.causal.regression %>% 
   left_join(df.exp3.model.causal,
             by = c("clip", "ball")) %>% 
   left_join(df.exp3.clipinfo %>% 
@@ -2272,10 +2328,9 @@ df.table = df.exp3.causal.regression %>%
             .funs = ~ . * 100) %>% 
   mutate_at(.vars = vars(-ball), .funs = ~ round(., 0)) %>%
   select(clip, ball, contains("outcome"), difference, whether, how, sufficient, robust,
-         w, wh, whs, heuristic, rating = rating_mean)
-
-xtable(df.table, digits = 0) %>%
-  print(include.rownames = FALSE)
+         w, wh, whs, heuristic, rating = rating_mean) %>% 
+  # print_table(format = "latex", digits = 0)
+  print_table(digits = 0)
 ```
 
 #### Heuristic model
@@ -2289,9 +2344,8 @@ fit.brm_exp3_causal_heuristic %>%
   mutate_if(is.numeric, ~ round(., 2)) %>% 
   rename(`lower 95% HDI` = lower,
          `upper 95% HDI` = upper) %>% 
-  xtable() %>%
-  print(include.rownames = F,
-        booktabs = T)
+  # print_table(format = "latex")
+  print_table()
 ```
 
 # Session info 
