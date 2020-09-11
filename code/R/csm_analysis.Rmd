@@ -19,7 +19,7 @@ output:
 library("knitr")       # for knitting stuff
 library("kableExtra")  # for markdown tables
 library("lme4")        # for linear mixed effects models
-library("broom")       # for tidying model results 
+library("broom.mixed") # for tidying mixed models results 
 library("brms")        # Bayesian regression with Stan
 library("corrr")       # for tidy correlation matrix
 library("xtable")      # for latex tables
@@ -31,7 +31,8 @@ library("png")         # adding pngs to images
 library("grid")        # functions for dealing with images 
 library("plotly")      # 3D scatter plot 
 library("egg")         # for geom_custom
-# library("ggtern")      # for ternary plots 
+library("clValid")     # for validating clustering solutions 
+# library("ggtern")      # for ternary plots
 library("patchwork")   # for figure panels
 library("tidyverse")   # for wrangling, plotting, etc. 
 ```
@@ -45,6 +46,9 @@ opts_chunk$set(comment = "",
 
 # set the ggplot theme
 theme_set(theme_classic())
+
+# suppress summarise() grouping warning 
+options(dplyr.summarise.inform = F)
 
 # function for printing out html or latex tables 
 print_table = function(data, format = "html", digits = 2){
@@ -522,13 +526,11 @@ func_posterior_difference(data = df.exp1.causal.posterior,
 
 ```{r}
 fit.brm_exp1_causal %>% 
-  tidy() %>% 
-  filter(str_detect(term, "b_")) %>% 
-  mutate(term = str_remove(term, "b_"),
-         term = tolower(term)) %>% 
+  tidy(effects = "fixed") %>% 
+  mutate(term = tolower(term)) %>% 
   mutate_if(is.numeric, ~ round(., 2)) %>% 
-  rename(`lower 95% HDI` = lower,
-         `upper 95% HDI` = upper) %>% 
+  rename(`lower 95% HDI` = conf.low,
+         `upper 95% HDI` = conf.high) %>% 
   # print_table(format = "latex")
   print_table()
 ```
@@ -805,13 +807,11 @@ fit.brm_exp2_counterfactual = brm(formula = rating ~ 1 + condition *
 
 ```{r}
 fit.brm_exp2_counterfactual %>% 
-  tidy() %>% 
-  filter(str_detect(term, "b_")) %>% 
-  mutate(term = str_remove(term, "b_"),
-         term = tolower(term)) %>% 
+  tidy(effects = "fixed") %>% 
+  mutate(term = tolower(term)) %>% 
   mutate_if(is.numeric, ~ round(., 2)) %>% 
-  rename(`lower 95% HDI` = lower,
-         `upper 95% HDI` = upper) %>% 
+  rename(`lower 95% HDI` = conf.low,
+         `upper 95% HDI` = conf.high) %>% 
   # print_table(format = "latex")
   print_table()
 ```
@@ -821,7 +821,7 @@ fit.brm_exp2_counterfactual %>%
 
 ### Plots 
 
-```{r fig.height=6, fig.width=16, fig.cap="Left panel: Counterfactual judgments first; right panel: Causal judgments first"}
+```{r fig.height=6, fig.width=16, warning=F, fig.cap="Left panel: Counterfactual judgments first; right panel: Causal judgments first"}
 set.seed(1)
 
 func_exp2_causal_plot = function(condition.name, model.name){
@@ -872,13 +872,15 @@ plot.list = list(func_exp2_causal_plot(condition.name = "counterfactual_first",
                  func_exp2_causal_plot(condition.name = "causal_first",
                                        model.name = "combined"))
 
-# model.name = "combined"
+wrap_plots(plot.list, ncol = 2)
+
 # condition.name = "counterfactual_first"
 # condition.name = "causal_first"
+# model.name = "combined"
 # 
 # func_exp2_causal_plot(condition.name = condition.name,
-#                       model.name = model.name),
-# 
+#                       model.name = model.name)
+
 # ggsave(str_c("../../figures/plots/exp2_", condition.name ,"_causal_bars.pdf"),
 #        width = 8,
 #        height = 6)
@@ -980,13 +982,11 @@ df.exp2.causal.posterior %>%
 
 ```{r}
 fit.brm_exp2_causal %>% 
-  tidy() %>% 
-  filter(str_detect(term, "b_")) %>% 
-  mutate(term = str_remove(term, "b_"),
-         term = tolower(term)) %>% 
+  tidy(effects = "fixed") %>% 
+  mutate(term = tolower(term)) %>% 
   mutate_if(is.numeric, ~ round(., 2)) %>% 
-  rename(`lower 95% HDI` = lower,
-         `upper 95% HDI` = upper) %>% 
+  rename(`lower 95% HDI` = conf.low,
+         `upper 95% HDI` = conf.high) %>% 
   # print_table(format = "latex")
   print_table()
 ```
@@ -1537,9 +1537,6 @@ fit.brm_exp3_causal_whs = brm(formula = rating ~ 1 + whether + how + sufficient 
                                     seed = 1,
                                     file = "cache/brm_exp3_causal_whs")
 
-# fit.brm_exp3_causal_w %>% summary()
-# fit.brm_exp3_causal_wh %>% summary()
-# fit.brm_exp3_causal_whs %>% summary()
 ```
 
 #### Model comparison
@@ -1726,20 +1723,20 @@ df.exp3.causal.individual_fit = df.fit %>%
                                        fitted() %>% 
                                        .[, 1])),
          rmse_w = map2_dbl(.x = data,
-                        .y = fit_w,
-                        .f = ~ rmse(.x$rating, .y %>% 
-                                     fitted() %>% 
-                                     .[, 1])),
+                           .y = fit_w,
+                           .f = ~ rmse(.x$rating, .y %>% 
+                                         fitted() %>% 
+                                         .[, 1])),
          rmse_wh = map2_dbl(.x = data,
-                         .y = fit_wh,
-                         .f = ~ rmse(.x$rating, .y %>% 
-                                      fitted() %>% 
-                                      .[, 1])),
+                            .y = fit_wh,
+                            .f = ~ rmse(.x$rating, .y %>% 
+                                          fitted() %>% 
+                                          .[, 1])),
          rmse_whs = map2_dbl(.x = data,
-                          .y = fit_whs,
-                          .f = ~ rmse(.x$rating, .y %>% 
-                                       fitted() %>% 
-                                       .[, 1])),
+                             .y = fit_whs,
+                             .f = ~ rmse(.x$rating, .y %>% 
+                                           fitted() %>% 
+                                           .[, 1])),
          model_comparison = pmap(.l = list(baseline = fit_baseline,
                                            w = fit_w,
                                            wh = fit_wh,
@@ -1755,7 +1752,7 @@ save(list = c("df.exp3.causal.individual_fit"),
      file = "data/exp3_causal_individual_fit.RData")
 ```
 
-#### Load individual participant regressions
+##### Load individual participant regressions
 
 ```{r}
 load("data/exp3_causal_individual_fit.RData")
@@ -1765,8 +1762,26 @@ df.exp3.causal.individual_fit %>%
   count(best_model) %>% 
   print_table()
 ```
+##### Model performance on individual participant level 
 
-#### Clusters of individual participants' responses
+```{r}
+df.exp3.causal.individual_fit %>% 
+  select(participant, contains("r_"), contains("rmse_")) %>% 
+  pivot_longer(cols = -participant,
+               names_to = c("measure", "model"),
+               names_sep = "_",
+               values_to = "fit") %>% 
+  group_by(model, measure) %>% 
+  summarize(quantiles = quantile(fit, probs = c(0.05, 0.5, 0.95)),
+            prob = c(0.05, 0.5, 0.95)) %>% 
+  pivot_wider(names_from = prob,
+              values_from = quantiles) %>% 
+  mutate(across(.fns = ~ round(., 2))) %>% 
+  print_table()
+```
+
+
+##### Clusters of individual participants' responses
 
 ```{r}
 set.seed(1)
@@ -1785,7 +1800,33 @@ df.cluster_whs = df.cluster_whs %>%
            select(-participant) %>%
            kmeans(centers = 2) %>% 
            .$cluster)
+
+df.cluster_whs %>% 
+  print_table()
+
+# cluster sizes
+df.cluster_whs %>% 
+  count(cluster)
 ```
+
+###### Check that clustering is stable 
+
+A 2-cluster solution yields a good result according to a number of different validation measures (see [here](https://cran.r-project.org/web/packages/clValid/vignettes/clValid.pdf) for more details on the different measures). 
+
+```{r}
+tmp = df.cluster_whs %>% 
+  select(-participant, -cluster)
+
+fit = clValid(obj = as.matrix(tmp),
+        nClust = 2:10,
+        clMethods = c("kmeans"),
+        validation = c("internal", "stability"))
+
+fit %>% 
+  summary()
+
+```
+
 
 ### Plots 
 
@@ -1847,9 +1888,7 @@ print(p)
 
 #### Selection 
 
-```{r fig.height=10, fig.width=20}
-# \u2713 = check mark 
-# \u2717 = cross mark 
+```{r fig.width=20, fig.height=10}
 
 check = "\u2713"
 cross = "\u2717"
@@ -1982,7 +2021,6 @@ print(p)
 #        width = 20,
 #        height = 10,
 #        device = cairo_pdf)
-
 ```
 
 #### Scatter plot
@@ -2074,9 +2112,6 @@ list(func_scatterplot(model = "w"),
 #### Individual participant variance for a selection of clips (clustered)
 
 ```{r fig.height=8.5, fig.width=20}
-# \u2713 = check mark 
-# \u2717 = cross mark 
-
 check = "\u2713"
 cross = "\u2717"
 
@@ -2258,32 +2293,27 @@ df.exp3.model %>%
   correlate() %>% 
   shave() %>% 
   fashion() %>% 
-  # print_table(format = "latex")
   print_table()
 ```
 
 #### Population level predictors in the mixed effects models 
 
 ```{r}
+
 fit.brm_exp3_causal_w %>% 
-  tidy() %>% 
-  filter(str_detect(term, "b_")) %>% 
+  tidy(effects = "fixed") %>% 
   mutate(model = "CSM_w") %>% 
   bind_rows(fit.brm_exp3_causal_wh %>% 
-              tidy() %>% 
-              filter(str_detect(term, "b_")) %>% 
+              tidy(effects = "fixed") %>% 
               mutate(model = "CSM_wh")) %>% 
   bind_rows(fit.brm_exp3_causal_whs %>% 
-              tidy() %>% 
-              filter(str_detect(term, "b_")) %>% 
+              tidy(effects = "fixed") %>% 
               mutate(model = "CSM_whs")) %>% 
-  mutate(term = tolower(term),
-         term = str_remove_all(term, "b_")) %>% 
-  rename(`lower 95% HDI` = lower,
-         `upper 95% HDI` = upper) %>% 
+  mutate(term = tolower(term)) %>% 
+  rename(`lower 95% HDI` = conf.low,
+         `upper 95% HDI` = conf.high) %>% 
   mutate_if(is.numeric, ~ round(., 2)) %>% 
-  select(model, everything()) %>% 
-  # print_table(format = "latex")
+  select(model, everything(), -effect, -component) %>% 
   print_table()
 ```
 
@@ -2294,7 +2324,6 @@ df.exp3.causal.individual_fit %>%
   select_if(~ (is.numeric(.) | is.factor(.))) %>% 
   mutate_at(.vars = vars(contains("_w")), .funs = ~ round(., 2)) %>% 
   select(participant, everything(), best_model) %>% 
-  # print_table(format = "latex")
   print_table()
 ```
 
@@ -2314,7 +2343,6 @@ df.exp3.model.causal %>%
                              str_c("xmark (", ., ")"),
                              str_c("cmark (", ., ")"))) %>%
   arrange(clip) %>% 
-  # print_table(format = "latex")
   print_table()
 ```
 
@@ -2340,14 +2368,11 @@ df.exp3.causal.regression %>%
 
 ```{r}
 fit.brm_exp3_causal_heuristic %>% 
-  tidy() %>% 
-  filter(str_detect(term, "b_")) %>% 
-  mutate(term = str_remove(term, "b_"),
-         term = tolower(term)) %>% 
+  tidy(effects = "fixed") %>% 
+  mutate(term = tolower(term)) %>% 
   mutate_if(is.numeric, ~ round(., 2)) %>% 
-  rename(`lower 95% HDI` = lower,
-         `upper 95% HDI` = upper) %>% 
-  # print_table(format = "latex")
+  rename(`lower 95% HDI` = conf.low,
+         `upper 95% HDI` = conf.high) %>% 
   print_table()
 ```
 
@@ -2359,7 +2384,7 @@ fit.brm_exp3_causal_heuristic %>%
 
 We have run a pilot eye-tracking experiment with 15 participants who saw the same clips as the ones in Experiment 3. Instead of asking participants to judge "To what extent were A and B responsible for E (not) going through the gate?", we asked them to judge to what extent they agreed with the following statement: "Ball A/B caused ball E to go through the gate." or "Ball A/B prevented ball E from going through the gate." depending on the outcome. 
 
-Participants agreement judgments with the causal statements in this pilot eye-tracking experiment were strikingly similar to participants' responsibility judgments in the online experiment. 
+Participants' agreement judgments with the causal statements in this pilot eye-tracking experiment were strikingly similar to participants' responsibility judgments in the online experiment. 
 
 ```{r fig.height=6, fig.width=6, message=FALSE, warning=FALSE}
 
@@ -2383,6 +2408,10 @@ df.plot = df.exp3.eye_tracking_pilot %>%
                      responsibility_high = rating_high),
             by = c("clip", "ball"))
 
+# highlight the double prevention clip (#23)
+df.plot = df.plot %>% 
+  mutate(color = ifelse(clip == 23, "1", "0"))
+
 ggplot(data = df.plot,
        mapping = aes(x = causality_mean,
                      y = responsibility_mean)) + 
@@ -2395,7 +2424,9 @@ ggplot(data = df.plot,
   geom_linerange(mapping = aes(xmin = causality_low,
                                xmax = causality_high),
                  alpha = 0.1) +
-  geom_point(size = 2) + 
+  geom_point(size = 2,
+             mapping = aes(color = color),
+             show.legend = F) + 
   geom_smooth(method = "lm",
               color = "black") +
   annotate(geom = "text",
@@ -2411,9 +2442,10 @@ ggplot(data = df.plot,
            hjust = 0, 
            size = 8) + 
   scale_x_continuous(breaks = seq(0, 100, 25),
-                     limits = c(0, 100))  +
+                     limits = c(0, 100)) +
   scale_y_continuous(breaks = seq(0, 100, 25),
-                     limits = c(0, 100))  +
+                     limits = c(0, 100)) +
+  scale_color_manual(values = c("black", "red")) +
   labs(x = "causal judgment",
        y = "responsibility judgment") +
   theme(text = element_text(size = 24))
@@ -2423,25 +2455,7 @@ ggplot(data = df.plot,
 #        height = 6)
 ```
 
-### 3D scatter plot of participant clusters 
-
-```{r, warning=F}
-plot_ly(x = df.cluster_whs$whether,
-        y = df.cluster_whs$how,
-        z = df.cluster_whs$sufficient,
-        type = "scatter3d",
-        mode = "markers",
-        color = as.factor(df.cluster_whs$cluster),
-        colors = c("#e41a1c", "#377eb8")) %>% 
-  layout(showlegend = FALSE,
-         title = "Participant clusters",
-         scene = list(
-           xaxis = list(title = "whether"),
-           yaxis = list(title = "how"),
-           zaxis = list(title = "sufficient")))
-```
-
-###Model fits for individual participants 
+### CSM_WHS fits for each individual participant 
 
 ```{r warning=F, fig.height=8, fig.width=12}
 
@@ -2492,16 +2506,20 @@ ggplot(data = df.plot,
         text = element_text(size = 16),
         panel.spacing.x = unit(0.75, "cm"),
         panel.spacing.y = unit(1, "cm"),
-        plot.margin = margin(t = 0.5, r = 0.5, unit = "cm"))
+        plot.margin = margin(t = 0.7,
+                             r = 0.8,
+                             b = 0.2,
+                             l = 0.2,
+                             unit = "cm"))
 
 # ggsave("../../figures/plots/exp3_individual_scatter_plots.pdf",
 #        width = 12,
 #        height = 8)
 ```
 
-###Individual participant model fits 
+### Individual participant fit model comparison
 
-```{r}
+```{r fig.height=6, fig.width=8}
 df.plot = df.exp3.causal.individual_fit %>% 
   select(participant, contains("r_"), contains("rmse_")) %>% 
   pivot_longer(cols = -participant,
@@ -2524,14 +2542,33 @@ ggplot(data = df.plot %>%
         legend.direction = "horizontal",
         text = element_text(size = 20))
 
-# ggsave("../../figures/plots/exp3_clusters_densities.pdf",
+# ggsave("../../figures/plots/exp3_individual_densities.pdf",
 #        width = 8,
 #        height = 6)
 ```
+### 3D scatter plot of participant clusters 
 
-###Clusters of participants 
+```{r, warning=F}
+plot_ly(x = df.cluster_whs$whether,
+        y = df.cluster_whs$how,
+        z = df.cluster_whs$sufficient,
+        type = "scatter3d",
+        mode = "markers",
+        color = as.factor(df.cluster_whs$cluster),
+        colors = c("#e41a1c", "#377eb8")) %>% 
+  layout(showlegend = FALSE,
+         title = "Participant clusters",
+         scene = list(
+           xaxis = list(title = "whether"),
+           yaxis = list(title = "how"),
+           zaxis = list(title = "sufficient")))
+```
+
+### Clusters of participants 
 
 ```{r fig.height=8, fig.width=12}
+set.seed(1)
+
 df.plot = df.exp3.causal.long %>% 
   left_join(df.cluster_whs %>% 
               select(participant, cluster) %>% 
@@ -2565,7 +2602,9 @@ ggplot(data = df.plot,
                shape = 21,
                position = position_dodge(width = 0.75)) + 
   facet_wrap(facets = vars(clip), ncol = 8) + 
-  labs(y = "causal responsibility rating") + 
+  labs(y = "causal responsibility rating",
+       fill = "cluster",
+       color = "cluster") + 
   scale_fill_brewer(palette = "Set1") + 
   scale_color_brewer(palette = "Set1") + 
   theme(text = element_text(size = 24),
@@ -2576,19 +2615,19 @@ ggplot(data = df.plot,
 #        height = 8)
 ```
 
-###Ternary plots for individual regression results 
+### Ternary plots for individual regression results 
 
-```{r}
+```{r, eval=F}
 library("ggtern")
 
 df.plot = df.exp3.causal.individual_fit %>% 
   select(participant, fit_whs) %>% 
-  mutate(estimates = map(fit_whs, tidy)) %>% 
+  mutate(estimates = map(fit_whs, ~ fixef(.) %>% 
+                           as_tibble(rownames = "term") %>% 
+                           clean_names())) %>%
   select(participant, estimates) %>% 
   unnest(estimates) %>% 
-  filter(str_detect(term, "b_"),
-         !str_detect(term, "Intercept")) %>% 
-  mutate(term = str_remove(term, "b_")) %>% 
+  filter(!str_detect(term, "Intercept")) %>% 
   select(participant, term, estimate) %>% 
   pivot_wider(names_from = term,
               values_from = estimate) %>% 
@@ -2626,6 +2665,3 @@ ggplot(data = df.plot,
 ```{r}
 sessionInfo()
 ```
-
-
-
