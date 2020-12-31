@@ -1,5 +1,5 @@
 #!/bin/bash
-experiment=$1 # '2ball', 'teleport', or '3ball'
+experiment=$1 # 'teleport' or '3ball'
 trial=$2 # trial index (remember 0 indexing)
 
 python3 create_frames.py $experiment $trial

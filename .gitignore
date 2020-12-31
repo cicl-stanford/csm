@@ -3,8 +3,10 @@
 .Rhistory	
 .Rapp.history	
 *.RData	
+.RData	
 *.rds	
 *.utf8.md	
 *.knit.md	
 *.pyc
 __pycache__/
+code/R/data/exp2_causal_individual_fit.RData

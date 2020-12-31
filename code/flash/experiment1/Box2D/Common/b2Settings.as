@@ -109,7 +109,7 @@ public class b2Settings{
 	* velocity below this threshold will be treated as inelastic.
 	*/
 	//static public const b2_velocityThreshold:Number = 1.0; //value used for all experiments with experiment_int < 26
-	static public const b2_velocityThreshold:Number = 0.01;		// 1 m/s
+	static public const b2_velocityThreshold:Number = 0.1;		// 1 m/s
 	
 	/**
 	* The maximum linear position correction used when solving constraints. This helps to
