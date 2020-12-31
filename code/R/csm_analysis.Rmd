@@ -1,5 +1,5 @@
 ---
-title: "A Counterfactual Simulation Model of Causal Judgment"
+title: "A Counterfactual Simulation Model of Causal Judgments for Physical Events"
 author: "Tobias Gerstenberg"
 date: '`r format(Sys.Date(), "%B %d, %Y")`'
 output:
