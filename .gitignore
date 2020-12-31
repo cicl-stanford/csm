@@ -2,7 +2,8 @@
 .Rproj.user
 .Rhistory	
 .Rapp.history	
-.RData	
+*.RData	
+*.rds	
 *.utf8.md	
 *.knit.md	
 *.pyc
