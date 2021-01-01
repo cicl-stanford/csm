@@ -1336,6 +1336,8 @@ df.exp2.causal.regression %>%
 
 #### Individual participant regressions 
 
+This code chunk takes a long time to compute but needs to be run once to generate the .RData file with individual data fits. The file was larger than 100mb so we couldn't upload it to github. 
+
 ```{r, eval=F}
 df.fit = df.exp2.causal.long %>% 
   left_join(df.exp2.model.causal,
@@ -1598,6 +1600,7 @@ print(p)
 #### Selection 
 
 ```{r fig.width=20, fig.height=10}
+set.seed(1)
 
 check = "\u2713"
 cross = "\u2717"
@@ -1718,6 +1721,7 @@ p = ggplot(data = df.plot,
         legend.position = "bottom",
         axis.title.x = element_blank(),
         axis.text.x = element_blank(),
+        axis.title.y = element_text(size = 30),
         legend.text = element_text(size = 30),
         strip.text = element_text(size = 30),
         legend.spacing = unit(0.5, "cm"),
@@ -2041,9 +2045,10 @@ df.exp2.causal.individual_fit %>%
 df.exp2.model.causal %>%
   left_join(df.exp2.causal.regression,
             by = c("clip", "ball")) %>% 
-  filter(clip %in% c(7, 23, 16, 3, 15)) %>%
+  filter(clip %in% c(7, 23, 3, 15, 16)) %>%
   select(clip, ball, difference, whether, how, sufficient, robust) %>%
-  mutate(clip = factor(clip, levels = c(7, 23, 16, 3, 15))) %>%
+  mutate(clip = factor(clip, levels = c(7, 23, 3, 15, 16))) %>%
+  mutate(across(where(is.numeric), ~ round(., 2))) %>%
   mutate(across(c(difference, whether, how, sufficient, robust),
                    ~ ifelse(. < 0.5,
                             str_c("xmark (", ., ")"),
@@ -2065,7 +2070,7 @@ df.exp2.causal.regression %>%
                 ~ . * 100)) %>% 
   select(clip, ball, contains("outcome"), difference, whether, how, sufficient,
          robust, w, wh, whs, heuristic, rating = rating_mean) %>% 
-  print_table("latex",digits = 0)
+  print_table(digits = 0)
 ```
 
 #### Heuristic model

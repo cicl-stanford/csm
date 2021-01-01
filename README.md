@@ -1,6 +1,6 @@
-# A Counterfactual simulation model of causal judgments for physical events
+# A counterfactual simulation model of causal judgments for physical events
 
-This repository contains all materials for the paper "A Counterfactual simulation model of causal judgments for physical events" by Tobias Gerstenberg, Noah Goodman, David Lagnado & Joshua Tenenbaum. If you have any questions about this repository, please feel to email me at [gerstenberg@stanford.edu](mailto:gerstenberg@stanford.edu).
+This repository contains all materials for the paper "A counterfactual simulation model of causal judgments for physical events" by Tobias Gerstenberg, Noah Goodman, David Lagnado & Joshua Tenenbaum. If you have any questions about this repository, please feel to email me at [gerstenberg@stanford.edu](mailto:gerstenberg@stanford.edu).
 
 # Repository structure 
 
