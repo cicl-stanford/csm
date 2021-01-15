@@ -36,6 +36,7 @@ library("plotly")      # 3D scatter plot
 library("egg")         # for geom_custom
 library("clValid")     # for validating clustering solutions 
 library("patchwork")   # for figure panels
+library("ggrepel")     # for labels in ggplot
 library("tidyverse")   # for wrangling, plotting, etc. 
 ```
 
@@ -171,6 +172,408 @@ actual_counterfactual_threeballs_plot = function(x, ylabel) {
 }
 
 ```
+
+# Preliminary study 
+
+## Clips 
+
+```{r study-diagrams, echo=F, out.width="100%"}
+include_graphics("../../figures/diagrams/study_diagrams.png")
+```
+
+## Read in data 
+
+```{r}
+# causal judgments
+df.study.causal = read.csv("../../data/study_causal.csv", 
+                          header = T,
+                          stringsAsFactors = F)
+
+# counterfactual judgments
+df.study.counterfactual = read.csv("../../data/study_counterfactual.csv",
+                                  header = T,
+                                  stringsAsFactors = F)
+
+# Information about each clip 
+df.study.clipinfo = tibble(clip = 1:18,
+                          outcome_actual = c(0, 0, 0, 0, 0, 0, 0, 1, 0, 
+                                             1, 1, 0, 1, 1, 1, 1, 1, 1),
+                          outcome_counterfactual = c(0, 0, 0, 1, 1, 1, 0, 0, 1, 
+                                                     0, 1, 1, 0, 0, 1, 0, 1, 1),
+                          index_actual = rep(c("actual miss", 
+                                               "actual close", 
+                                               "actual hit"), each = 6),
+                          index_counterfactual = rep(rep(c("counterfactual miss",
+                                                           "counterfactual close", 
+                                                           "counterfactual hit"),
+                                                         each = 2),
+                                                     3)) %>% 
+  mutate(index_actual = factor(index_actual, levels = c("actual miss", 
+                                                        "actual close", 
+                                                        "actual hit")),
+         index_counterfactual = factor(index_counterfactual, 
+                                       levels = c("counterfactual miss",
+                                                  "counterfactual close", 
+                                                  "counterfactual hit")))
+
+# Structure data 
+df.study.causal.long = df.study.causal$data %>%
+  enframe() %>% 
+  mutate(participant = 1:n()) %>% 
+  separate_rows(value, sep = ",") %>% 
+  mutate(name = rep(c("clip", "rating"), n()/2),
+         order = rep(rep(1:18, each = 2), max(participant)),
+         value = as.numeric(value)) %>% 
+  pivot_wider(names_from = name,
+              values_from = value) %>% 
+  arrange(participant, clip, rating) %>% 
+  left_join(df.study.clipinfo,
+            by = "clip")
+
+df.study.counterfactual.long = df.study.counterfactual$data %>%
+  enframe() %>% 
+  mutate(participant = 1:n()) %>% 
+  separate_rows(value, sep = ",") %>% 
+  mutate(name = rep(c("clip", "rating"), n()/2),
+         order = rep(rep(1:18, each = 2), max(participant)),
+         value = as.numeric(value)) %>% 
+  pivot_wider(names_from = name,
+              values_from = value) %>% 
+  arrange(participant, clip, rating) %>% 
+  left_join(df.study.clipinfo,
+            by = "clip")
+```
+
+### Demographics 
+
+```{r}
+# counterfactual condition 
+df.study.counterfactual %>% 
+  separate(extra,
+           into = c("gender", "age", "difficulty", "smoothness", "time"),
+           sep = ",") %>% 
+  mutate(gender = factor(gender, levels = c(1, 2), labels = c("female", "male"))) %>% 
+  select(gender:time) %>% 
+  mutate_if(is.character, ~ as.numeric(.)) %>% 
+  summarize(n = nrow(.),
+            age_mean = mean(age) %>% round(0),
+            age_sd = sd(age) %>% round(1),
+            n_female = sum(gender == "female"),
+            time_mean = mean(time) %>% round(2),
+            time_sd = sd(time) %>% round(2)) %>% 
+  print_table()
+
+# causal condition 
+df.study.causal %>% 
+  separate(extra,
+           into = c("gender", "age", "difficulty", "smoothness", "time"),
+           sep = ",") %>% 
+  mutate(gender = factor(gender, levels = c(1, 2), labels = c("female", "male"))) %>% 
+  select(gender:time) %>% 
+  mutate_if(is.character, ~ as.numeric(.)) %>% 
+  summarize(n = nrow(.),
+            age_mean = mean(age) %>% round(0),
+            age_sd = sd(age) %>% round(1),
+            n_female = sum(gender == "female"),
+            time_mean = mean(time) %>% round(2),
+            time_sd = sd(time) %>% round(2)) %>% 
+  print_table()
+```
+
+## Read in model predictions 
+
+### Counterfactual condition
+
+```{r}
+# read model predictions 
+path = "../python/results/"
+files = list.files(path = path, pattern = "*.csv")
+files = files[str_detect(files, "2ball")]
+
+df.study.model = files %>%
+  map_dfr(~ read.csv(str_c(path, .))) %>%
+  set_names(c("clip", "noise", "prediction")) %>%
+  left_join(df.study.clipinfo, by = "clip") %>%
+  mutate(prediction = ifelse(outcome_actual == 1, 1 - prediction, prediction))
+
+# calculate mean counterfactual judgments 
+df.study.counterfactual.means = df.study.counterfactual.long %>%
+  group_by(clip) %>%
+  summarize(rating_mean = mean(rating),
+            rating_low = smean.cl.boot(rating)[2],
+            rating_high = smean.cl.boot(rating)[3]) %>%
+  ungroup() %>%
+  left_join(df.study.clipinfo, by = "clip")
+
+# find noisy simulation model that best predicts the mean counterfactual judgments by 
+# minimizing the sum of squared errors 
+df.study.counterfactual.model = df.study.model %>% 
+  group_by(noise) %>% 
+  nest() %>% 
+  mutate(sse = map(data, 
+                   ~ sum((.x$prediction*100 - 
+                            df.study.counterfactual.means$rating_mean) ^ 2)),
+         sse = unlist(sse)) %>% 
+  ungroup() %>% 
+  filter(sse == min(sse)) %>% 
+  unnest(data) %>% 
+  mutate(prediction = prediction * 100)
+```
+
+### Causal condition 
+
+```{r}
+df.study.causal.model = df.study.counterfactual.long %>% 
+  group_by(clip) %>% 
+  summarize(empirical = mean(rating)) %>% 
+  ungroup() %>% 
+  left_join(df.study.counterfactual.model %>% 
+              select(-c(noise, sse)),
+            by = "clip") %>% 
+  rename(simulation = prediction) %>% 
+  mutate(empirical = ifelse(outcome_actual == 1, 100 - empirical, empirical),
+         simulation = ifelse(outcome_actual == 1, 100 - simulation, simulation))
+```
+
+## Counterfactual condition 
+
+### Plots
+
+```{r fig.height=6, fig.width=8, warning=FALSE}
+set.seed(1)
+df.plot = df.study.counterfactual.long %>% 
+  mutate(rating = abs(rating),
+         clipindex = rep(c(1, 2), nrow(.)/2)) %>% 
+  left_join(df.study.counterfactual.model,
+            by = c("clip",
+                   "outcome_actual",
+                   "outcome_counterfactual",
+                   "index_actual",
+                   "index_counterfactual")) %>% 
+  pivot_longer(cols = c(rating, prediction),
+               names_to = "model",
+               values_to = "value") %>% 
+  mutate(colorindex = ifelse(outcome_counterfactual == 1, 2, 1),
+         colorindex = ifelse(model != "rating", 3, colorindex),
+         colorindex = as.factor(colorindex),
+         index_actual = factor(index_actual,
+                               levels = c("actual miss", "actual close", "actual hit")),
+         index_counterfactual = factor(index_counterfactual,
+                                       levels = c("counterfactual miss",
+                                                  "counterfactual close",
+                                                  "counterfactual hit")),
+         model = factor(model, levels = c("rating", "prediction"))) %>% 
+  mutate(clipindex = ifelse(clip == 11, 2, clipindex),
+         clipindex = ifelse(clip == 12, 1, clipindex)) #swap clips 11 and 12
+
+
+df.text = df.plot %>%
+  expand(index_actual, index_counterfactual, clipindex, model) %>%
+  mutate(label = rep(1:18, each = 2),
+         label = ifelse(model != "rating", NA, label),
+         y = -15,
+         x = clipindex,
+         colorindex = NA)
+
+p = actual_counterfactual_plot(x = df.plot, ylabel = "counterfactual judgment")
+print(p)
+
+# ggsave("../../figures/plots/study_counterfactual_bars.pdf",
+#        width = 8,
+#        height = 6)
+```
+
+### Stats
+
+#### Model evaluation
+
+```{r}
+df.study.counterfactual.means %>% 
+  left_join(df.study.counterfactual.model,
+            by = c("clip",
+                   "outcome_actual",
+                   "outcome_counterfactual",
+                   "index_actual",
+                   "index_counterfactual")) %>% 
+  summarize(noise = unique(noise), 
+            simulation_r = cor(rating_mean, prediction),
+            simulation_rmse = rmse(rating_mean, prediction)) %>% 
+  print_table()
+```
+
+## Causal condition 
+
+### Plots 
+
+#### Bar plot 
+
+```{r fig.height=6, fig.width=8, warning=FALSE}
+set.seed(1)
+
+model.name = c("empirical")
+# model.name = c("simulation")
+
+df.plot = df.study.causal.long %>%
+  mutate(rating = abs(rating),
+         clipindex = rep(c(1, 2), nrow(.) / 2)) %>%
+  left_join(df.study.causal.model,
+            by = c("clip",
+                   "outcome_actual",
+                   "outcome_counterfactual",
+                   "index_actual",
+                   "index_counterfactual")) %>%
+  pivot_longer(cols = c(rating, simulation, empirical),
+               names_to = "model",
+               values_to = "value") %>% 
+  filter(model %in% c(model.name, "rating")) %>%
+  mutate(model = factor(model, levels = c("rating", model.name))) %>%
+  mutate(
+    colorindex = ifelse(outcome_actual == 1, 2, 1),
+    colorindex = ifelse(model != "rating", 3, colorindex),
+    colorindex = as.factor(colorindex),
+    index.actual = factor(index_actual, 
+                          levels = c("actual miss", "actual close", "actual hit")),
+    index.counterfactual = factor(index_counterfactual, 
+                                  levels = c("counterfactual miss", 
+                                             "counterfactual close", 
+                                             "counterfactual hit"))) %>%
+  mutate(clipindex = ifelse(clip == 11, 2, clipindex),
+         clipindex = ifelse(clip == 12, 1, clipindex)) # swap clips 11 and 12
+
+df.text = df.plot %>%
+  expand(index_actual, index_counterfactual, clipindex, model) %>%
+  mutate(label = rep(1:18, each = 2),
+         label = ifelse(model != "rating", NA, label),
+         y = -15,
+         x = clipindex,
+         colorindex = NA)
+
+p = actual_counterfactual_plot(df.plot, "causal judgment")
+print(p)
+
+ggsave("../../figures/plots/study_causal_bars.pdf",
+       width = 8,
+       height = 6)
+```
+
+#### Scatterplot 
+
+Relationship between counterfactual judgments and causal judgments. 
+
+```{r, warning=F}
+set.seed(1)
+
+df.plot = df.study.causal.long %>% 
+  mutate(rating = abs(rating)) %>% 
+  group_by(clip, outcome_actual, outcome_counterfactual,
+           index_actual, index_counterfactual) %>% 
+  summarize(rating = smean.cl.boot(rating)) %>% 
+  mutate(index = c("cause_mean", "cause_low", "cause_high")) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = index,
+              values_from = rating) %>% 
+  left_join(df.study.counterfactual.long %>% 
+              mutate(rating = ifelse(outcome_actual == 1, 100 - rating, rating)) %>% 
+              group_by(clip, outcome_actual, outcome_counterfactual,
+                       index_actual, index_counterfactual) %>% 
+              summarize(rating = smean.cl.boot(rating)) %>% 
+              mutate(index = c("counterfactual_mean", "counterfactual_low", "counterfactual_high")) %>% 
+              pivot_wider(names_from = index,
+                          values_from = rating),
+            by = c("clip", "outcome_actual", "outcome_counterfactual", "index_actual", "index_counterfactual")) %>% 
+  mutate(fill = "black",
+         fill = ifelse(clip %in% c(14, 16, 18), "green", fill),
+         fill = ifelse(clip %in% c(2, 4, 6), "red", fill),
+         label = ifelse(clip %in% c(2, 4, 6, 14, 16, 18), clip, NA))
+
+ggplot(data = df.plot,
+       mapping = aes(x = counterfactual_mean, 
+                     y = cause_mean)) +
+  geom_abline(intercept = 0,
+              slope = 1,
+              linetype = 2) + 
+  # geom_smooth(aes(y = estimate,
+  #                 ymin = q2_5,
+  #                 ymax = q97_5),
+  #             stat = "identity",
+  #             color = "black") +
+  geom_linerange(size = 0.75, 
+                 mapping = aes(ymin = cause_low,
+                               ymax = cause_high),
+                 color = "gray50") +
+  geom_linerange(size = 0.75, 
+                 mapping = aes(xmin = counterfactual_low,
+                               xmax = counterfactual_high),
+                 color = "gray50") +
+  geom_text_repel(mapping = aes(label = label,
+                                color = fill), 
+                  size = 6,
+                  direction = "both",
+                  box.padding = 1,
+                  show.legend = F,
+                  nudge_x = 1,
+                  nudge_y = 1) + 
+  geom_point(size = 3,
+             shape = 21, 
+             color = "black",
+             mapping = aes(fill = fill),
+             show.legend = F) +
+  annotate(geom = "text",
+           label = str_c(
+             "r = ", cor(df.plot$cause_mean, df.plot$counterfactual_mean) %>%
+               round(2) %>%
+               as.character() %>%
+               str_sub(start = 2),
+             "\nRMSE = ", rmse(df.plot$cause_mean, df.plot$counterfactual_mean) %>%
+               round(2)),
+           x = -2,
+           y = 95,
+           size = 6,
+           hjust = 0) +
+  coord_fixed(xlim = c(0, 100),
+              ylim = c(0, 100)) +
+  labs(x = "counterfactual judgment",
+       y = "causal judgment") +
+  scale_color_manual(values = c("black", "darkred", "darkgreen"),
+                    breaks = c("black", "red", "green")) + 
+  scale_fill_manual(values = c("black", "red", "green"),
+                    breaks = c("black", "red", "green")) + 
+  scale_x_continuous(breaks = seq(0, 100, 25)) +
+  scale_y_continuous(breaks = seq(0, 100, 25)) +
+  theme(text = element_text(size = 20))
+
+# ggsave("../../figures/plots/study_scatter.pdf",
+#        width = 5,
+#        height = 5)
+```
+
+### Stats
+
+#### Model evaluation 
+
+```{r}
+df.study.causal.long %>% 
+  mutate(rating = abs(rating)) %>% 
+  group_by(clip,
+           outcome_actual, 
+           outcome_counterfactual,
+           index_actual,
+           index_counterfactual) %>% 
+  summarize(rating = mean(rating)) %>% 
+  ungroup() %>% 
+  left_join(df.study.causal.model,
+            by = c("clip", 
+                   "outcome_actual", 
+                   "outcome_counterfactual", 
+                   "index_actual", 
+                   "index_counterfactual")) %>% 
+  summarize(empirical_r = cor(rating, empirical),
+            empirical_rmse = rmse(rating, empirical),
+            simulation_r = cor(rating, simulation),
+            simulation_rmse = rmse(rating, simulation)) %>% 
+  print_table()
+```
+
 
 # Experiment 1: One candidate cause
 
