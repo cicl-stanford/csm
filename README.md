@@ -30,7 +30,8 @@ This repository contains all materials for the paper "A counterfactual simulatio
 │   └── plots
 └── videos
     ├── experiment1
-    └── experiment2
+    ├── experiment2
+    └── preliminary_study
 ```
 
 ## code 

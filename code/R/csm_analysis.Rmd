@@ -279,9 +279,9 @@ df.study.causal %>%
             time_sd = sd(time) %>% round(2)) %>% 
   print_table()
 ```
+## Plots 
 
-
-#### Scatterplot 
+### Scatterplot 
 
 Relationship between counterfactual judgments and causal judgments. 
 
@@ -306,10 +306,7 @@ df.plot = df.study.causal.long %>%
               pivot_wider(names_from = index,
                           values_from = rating),
             by = c("clip", "outcome_actual", "outcome_counterfactual", "index_actual", "index_counterfactual")) %>% 
-  mutate(fill = "black",
-         fill = ifelse(clip %in% c(14, 16, 18), "green", fill),
-         fill = ifelse(clip %in% c(2, 4, 6), "red", fill),
-         label = ifelse(clip %in% c(2, 4, 6, 14, 16, 18), clip, NA))
+  mutate(outcome_actual = as.factor(outcome_actual))
 
 ggplot(data = df.plot,
        mapping = aes(x = counterfactual_mean, 
@@ -325,23 +322,24 @@ ggplot(data = df.plot,
   geom_linerange(size = 0.75, 
                  mapping = aes(ymin = cause_low,
                                ymax = cause_high),
-                 color = "gray50") +
+                 color = "gray80") +
   geom_linerange(size = 0.75, 
                  mapping = aes(xmin = counterfactual_low,
                                xmax = counterfactual_high),
-                 color = "gray50") +
-  geom_text_repel(mapping = aes(label = label,
-                                color = fill), 
+                 color = "gray80") +
+  geom_text_repel(mapping = aes(label = clip,
+                                color = outcome_actual), 
                   size = 6,
                   direction = "both",
-                  box.padding = 1,
                   show.legend = F,
-                  nudge_x = 1,
-                  nudge_y = 1) + 
+                  seed = 1,
+                  box.padding = 0.27
+                  ) + 
   geom_point(size = 3,
              shape = 21, 
+             stroke = 1,
              color = "black",
-             mapping = aes(fill = fill),
+             mapping = aes(fill = outcome_actual),
              show.legend = F) +
   annotate(geom = "text",
            label = str_c(
@@ -359,10 +357,8 @@ ggplot(data = df.plot,
               ylim = c(0, 100)) +
   labs(x = "counterfactual judgment",
        y = "causal judgment") +
-  scale_color_manual(values = c("black", "darkred", "darkgreen"),
-                    breaks = c("black", "red", "green")) + 
-  scale_fill_manual(values = c("black", "red", "green"),
-                    breaks = c("black", "red", "green")) + 
+  scale_color_manual(values = c("darkred", "darkgreen")) + 
+  scale_fill_manual(values = c("red", "green")) + 
   scale_x_continuous(breaks = seq(0, 100, 25)) +
   scale_y_continuous(breaks = seq(0, 100, 25)) +
   theme(text = element_text(size = 20))
