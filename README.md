@@ -12,7 +12,8 @@ This repository contains all materials for the paper "A counterfactual simulatio
 │   │   └── data
 │   ├── flash
 │   │   ├── experiment1
-│   │   └── experiment2
+│   │   ├── experiment2
+│   │   └── preliminary_study
 │   └── python
 │       ├── figures
 │       ├── results
@@ -23,7 +24,8 @@ This repository contains all materials for the paper "A counterfactual simulatio
 ├── figures
 │   ├── clips
 │   │   ├── experiment1
-│   │   └── experiment2
+│   │   ├── experiment2
+│   │   └── preliminary_study
 │   ├── diagrams
 │   └── plots
 └── videos
