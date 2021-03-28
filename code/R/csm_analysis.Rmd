@@ -15,7 +15,7 @@ output:
 
 ## Load packages 
 
-```{r, message=F}
+```{r, message=F, warning=FALSE}
 # library("ggtern")    # for ternary plots
 # library("afex")      # for ANOVAs 
 library("knitr")       # for knitting stuff
@@ -72,8 +72,8 @@ rmse = function(x, y){
   return(sqrt(mean((x - y)^2)))
 }
 
-actual_counterfactual_plot = function(x, ylabel) {
-  p = ggplot(data = x, 
+actual_counterfactual_plot = function(data, text, ylabel) {
+  p = ggplot(data = data, 
               mapping = aes(x = clipindex,
                             y = value,
                             fill = colorindex,
@@ -87,7 +87,8 @@ actual_counterfactual_plot = function(x, ylabel) {
                  fun.data = "mean_cl_boot",
                  position = position_dodge(0.7),
                  size = 1) +
-    geom_point(data = x %>% mutate(value = ifelse(model == "rating", value, NA)),
+    geom_point(data = data %>% 
+                 mutate(value = ifelse(model == "rating", value, NA)),
                position = position_jitterdodge(dodge.width = 0.7, jitter.width = 0.2),
                shape = 21,
                color = "black",
@@ -95,7 +96,7 @@ actual_counterfactual_plot = function(x, ylabel) {
                alpha = 0.2) +
     scale_fill_manual(values = c("red2", "green2", "black")) +
     facet_grid(index_actual ~ index_counterfactual) +
-    geom_text(data = df.text %>%
+    geom_text(data = text %>%
                 drop_na(label),
               mapping = aes(x = x, y = y, label = as.character(label)),
               size = 6,
@@ -600,7 +601,7 @@ df.text = df.plot %>%
          x = clipindex,
          colorindex = NA)
 
-p = actual_counterfactual_plot(df.plot, "counterfactual judgment")
+p = actual_counterfactual_plot(df.plot, df.text, "counterfactual judgment")
 print(p)
 
 # ggsave("../../figures/plots/exp1_counterfactual_bars.pdf",
@@ -723,7 +724,7 @@ df.text = df.plot %>%
          x = clipindex,
          colorindex = NA)
 
-actual_counterfactual_plot(df.plot, "causal judgment")
+actual_counterfactual_plot(df.plot, df.text, "causal judgment")
 }
 
 plot.list = list(func_exp1_causal_plot(condition.name = "counterfactual_first",
@@ -1621,8 +1622,8 @@ df.exp2.causal.individual_fit = df.fit %>%
                              levels = c("..1", "..2", "..3", "..4"),
                              labels = c("baseline", "w", "wh", "whs")))
 
-save(list = c("df.exp2.causal.individual_fit"),
-     file = "data/exp2_causal_individual_fit.RData")
+# save(list = c("df.exp2.causal.individual_fit"),
+#      file = "data/exp2_causal_individual_fit.RData")
 ```
 
 ##### Load individual participant regressions
@@ -1934,11 +1935,12 @@ func_scatterplot = function(model){
                     ymin = q2_5,
                     ymax = q97_5),
                 stat = "identity",
-                color = "black") +
-    geom_linerange(size = 0.75, 
+                color = "lightblue",
+                fill = "lightblue") +
+    geom_linerange(size = 0.5, 
                    mapping = aes(ymin = rating_low,
                                  ymax = rating_high),
-                   color = "gray50") +
+                   color = "gray80") +
     geom_point(size = 2) + 
     scale_color_manual(values = c("black", "#e41a1c"),
                        guide = F) +
@@ -1976,7 +1978,7 @@ list(func_scatterplot(model = "w"),
 # model = "wh"
 # model = "whs"
 # model = "heuristic"
-# 
+
 # func_scatterplot(model)
 # ggsave(str_c("../../figures/plots/exp2_", model, "_scatter.pdf"),
 #        width = 5,
@@ -2334,7 +2336,7 @@ df.text = df.plot %>%
          x = clipindex,
          colorindex = NA)
 
-p = actual_counterfactual_plot(x = df.plot, ylabel = "counterfactual judgment")
+p = actual_counterfactual_plot(df.plot, df.text, "counterfactual judgment")
 print(p)
 
 # ggsave("../../figures/plots/study_counterfactual_bars.pdf",
@@ -2407,7 +2409,7 @@ df.text = df.plot %>%
          x = clipindex,
          colorindex = NA)
 
-p = actual_counterfactual_plot(df.plot, "causal judgment")
+p = actual_counterfactual_plot(df.plot, df.text, "causal judgment")
 print(p)
 
 # ggsave("../../figures/plots/study_causal_bars.pdf",
@@ -2534,6 +2536,9 @@ ggplot(data = df.plot,
   geom_abline(intercept = 0, 
               slope = 1,
               linetype = 2) + 
+  geom_smooth(method = "lm",
+              color = "lightblue",
+              fill = "lightblue") +
   geom_linerange(mapping = aes(ymin = responsibility_low,
                                ymax = responsibility_high),
                  alpha = 0.1) +
@@ -2543,8 +2548,6 @@ ggplot(data = df.plot,
   geom_point(size = 2,
              mapping = aes(color = color),
              show.legend = F) + 
-  geom_smooth(method = "lm",
-              color = "black") +
   annotate(geom = "text",
            x = c(0, 0),
            y = c(100, 90),
@@ -2778,8 +2781,53 @@ ggplot(data = df.plot,
 #        height = 5)
 ```
 
+# Paper figures 
+
+## Figure 11 
+
+```{r fig.height=6, fig.width=16, message=FALSE, warning=FALSE}
+
+plot.list = list(func_exp1_causal_plot(condition.name = "counterfactual_first",
+                                       model.name = "counterfactual_first"),
+                 func_exp1_causal_plot(condition.name = "causal_first",
+                                       model.name = "causal_first"))
+
+wrap_plots(plot.list,
+           ncol = 2) +
+  plot_annotation(tag_levels = c("A")) &
+  theme(plot.tag.position = c(0, 0.99),
+        plot.tag = element_text(size = 30,
+                                face = "bold"))
+
+# ggsave("../../figures/plots/figure11.pdf",
+#        width = 16,
+#        height = 6)
+```
+
+## Figure 15 
+
+```{r fig.height=9, fig.width=10}
+
+list(func_scatterplot(model = "w"),
+     func_scatterplot(model = "wh"),
+     func_scatterplot(model = "whs"),
+     func_scatterplot(model = "heuristic")) %>%
+  wrap_plots(ncol = 2) + 
+  plot_annotation(tag_levels = c("A")) &
+  theme(plot.tag.position = c(0, 1),
+        plot.tag = element_text(size = 30,
+                                face = "bold"),
+        plot.margin = margin(t = 0.5, r = 0.5, b = 0, l = 0.5, unit = "cm"))
+
+# ggsave("../../figures/plots/figure15.pdf",
+#        width = 10,
+#        height = 9)
+```
+
+
 # Session info 
 
 ```{r}
+
 sessionInfo()
 ```
