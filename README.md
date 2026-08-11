@@ -2,7 +2,7 @@
 
 This repository contains all materials for the paper "A counterfactual simulation model of causal judgments for physical events" by Tobias Gerstenberg, Noah Goodman, David Lagnado & Joshua Tenenbaum. If you have any questions about this repository, please feel to email me at [gerstenberg@stanford.edu](mailto:gerstenberg@stanford.edu).
 
-# Repository structure 
+# Repository structure
 
 ```
 .
@@ -34,17 +34,17 @@ This repository contains all materials for the paper "A counterfactual simulatio
     └── preliminary_study
 ```
 
-## code 
+## code
 
-### R 
+### R
 
 Analysis and plotting script. You can view a rendered html file of the analysis [here](https://cicl-stanford.github.io/csm/). 
 
-### flash 
+### flash
 
 Flash experiment code files. 
 
-### python 
+### python
 
 The counterfactual simulation model is implemented in python 3.7 using the physics engine [pymunk](http://www.pymunk.org/en/latest/). The  `model.py` file contains the model code. 
 
@@ -61,24 +61,24 @@ The counterfactual simulation model is implemented in python 3.7 using the physi
 
 - to create videos of the different clips, you can run the `make_videos.sh` script like so `bash make_videos.sh '2balls' 0` (this would make a video of the first clip in Experiment 1)
 
-## data 
+## data
 
 Raw data files of the three experiments reported in the paper (two conditions each). 
 
 ## figures
 
-### clips 
+### clips
 
 Illustrations of the different clips in each experiment. 
 
-### diagrams 
+### diagrams
 
 Diagrams used in the paper. 
 
-### plots 
+### plots
 
 Results plots. 
 
-## videos 
+## videos
 
 Videos of the clips presented in the three different experiments. 
